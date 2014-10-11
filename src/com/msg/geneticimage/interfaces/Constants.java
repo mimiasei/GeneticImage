@@ -28,7 +28,7 @@ public interface Constants {
 	/* Max percentage of POLYGON_COUNT mutations per child. */
 	static final double MAX_MUTATIONS = 0.10;
 	/* Population size of chromosomes. */
-	static final int POPULATION_SIZE = 20; // must be even number
+	static final int POPULATION_SIZE = 10; // must be even number
 	
 	// Polygon class:
 	

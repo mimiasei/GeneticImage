@@ -27,7 +27,7 @@ public class GeneticImage extends JPanel implements Constants {
 		compareImage = new BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB);
 
 		try {
-		    compareImage = ImageIO.read(new File("src/com/msg/geneticimage/main/ask.jpg"));
+		    compareImage = ImageIO.read(new File("src/com/msg/geneticimage/main/ask100px.jpg"));
 		} catch (IOException e) {
 			System.out.println("Image file not found!");
 		}

@@ -40,31 +40,29 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 	public CreatePolygonImage process(CreatePolygonImage createImage) {
 		
 		/* The createImage array for initial parents of length popSize. */
-		CreatePolygonImage[] createImageInitPop = new CreatePolygonImage[popSize];
-		/* The createImage array for both parents and children of length popSize * 2. */
-		CreatePolygonImage[] createImagePop = new CreatePolygonImage[popSize << 1];
+		CreatePolygonImage[] populationLarge = new CreatePolygonImage[popSize << 1];
 		
-		Chromosome[] population = new Chromosome[popSize];
 		boolean[] usedPop = new boolean[popSize];
 		int iterations = 0;
 		Random random = new Random();
-		Chromosome Chromosome, bestChromosome;
-		Chromosome[] parent = new Chromosome[2];
-		
-		bestChromosome = new Chromosome(0);
-		bestChromosome.fitness = Long.MAX_VALUE;
+		CreatePolygonImage chromosome, bestChromosome;
+		CreatePolygonImage[] parent = new CreatePolygonImage[2];
+		/* Create an empty chromosome with max fitness score, for initiation purposes. */
+		chromosome = new CreatePolygonImage(createImage.getWidth(), createImage.getHeight());
+		bestChromosome = new CreatePolygonImage(chromosome);
 		
 		Algorithm<CreatePolygonImage> randomAlg = new RandomAlgorithm();		
 		/* Create images based on POLYGON_COUNT random polygons. */
 		randomAlg.setMaxIterations(POLYGON_COUNT);
 		
+		/* Initialize populationLarge array. */
+		Arrays.fill(populationLarge, new CreatePolygonImage(chromosome));
+		
 		/* Create popSize number of random images as chromosomes. */
 		for (int i = 0; i < popSize; i++) {
 			createImage = randomAlg.process(createImage);
-			createImageInitPop[i] = createImage;
-			Chromosome = new Chromosome(i);
-			Chromosome.fitness = getFitness(createImage.getImage());
-			population[i] = Chromosome;
+			populationLarge[i] = createImage;
+			populationLarge[i].setFitness(getFitness(createImage.getImage()));
 		}
 		
 		System.out.println("\nGenetic algorithm. Population size: " + popSize + 
@@ -86,15 +84,18 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 			Arrays.fill(usedPop, false);
 			
 			/* Sort by fitness. */
-			Arrays.sort(population);
+			Arrays.sort(populationLarge);
+			
+			// DEBUG
+			for (int i = 0; i < popSize; i++)
+				System.out.println("Sorted populationLarge #" + i + " fitness: " + populationLarge[i].getFitness());
 			
 			/* Select mates by fitness. 
 			 * Cross them and get two children using cross-over.
 			 * Mutate children.
 			 * Remove half of chromosomes by lowest fitness.
 			 */
-			int better = 0, worse = 0, counter = 0;
-			Chromosome[] newPopulation = new Chromosome[popSize << 1];		
+			int better = 0, worse = 0, counter = 0;		
 			CreatePolygonImage[] createdChildren;
 			
 			/* Go through chromosomes via loop of half the size of popSize,
@@ -102,8 +103,7 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 			 * 
 			 * Selecting one parent from the top half fitness scores and the
 			 * other parent from the bottom half.
-			 */
-			
+			 */		
 			for (int i = 0; i < (popSize >> 1); i++) {
 				
 				switch (PARENT_SELECTION) {
@@ -111,7 +111,7 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 												do
 													better = random.nextInt((popSize >> 1));
 												while (usedPop[better]);
-												parent[b] = population[better];
+												parent[b] = populationLarge[better];
 												usedPop[better] = true;
 											}
 											break;
@@ -119,7 +119,7 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 												do
 													better = random.nextInt((popSize >> 1)) + b * (popSize >> 1);
 												while (usedPop[better]);
-												parent[b] = population[better];
+												parent[b] = populationLarge[better];
 												usedPop[better] = true;
 											}
 											break;
@@ -134,7 +134,7 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 													} else
 														sel++;
 												} while (usedPop[better] && sel < (popSize >> 1));
-												parent[b] = population[better];
+												parent[b] = populationLarge[better];
 											}	
 											break;
 					case TOP_BEST_WORST:	sel = (popSize >> 1);
@@ -148,7 +148,7 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 													} else
 														sel++;
 												} while (usedPop[worse] && sel < popSize);	
-												parent[b] = population[worse];
+												parent[b] = populationLarge[worse];
 											}	
 											break;
 					case RND_WORST:			for (int b = 0; b < 2; b++) {
@@ -160,7 +160,7 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 				}
 				
 				createdChildren = new CreatePolygonImage[2];
-				int nbrOfPolys = createImageInitPop[0].getNumberOfPolygons();
+				int nbrOfPolys = populationLarge[0].getNumberOfPolygons();
 				
 				/* Create the two children. */
 				for (int c = 0; c < 2; c++)				
@@ -172,7 +172,7 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 					}
 					else
 						/* Create child as copy of its parent. */
-						createdChildren[c] = new CreatePolygonImage(createImageInitPop[parent[c].index]);
+						createdChildren[c] = new CreatePolygonImage(parent[c]);
 				
 				/* Do two-point cross-over if ratio permits it. */
 				if(random.nextDouble() < CROSSOVER_RATIO) {				
@@ -180,11 +180,11 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 					int pos2 = random.nextInt(nbrOfPolys - pos1) + pos1;
 					for (int child = 0; child < 2; child++) {
 						for (int a = 0; a < pos1; a++)
-							createdChildren[child].setPolygon(a, createImageInitPop[parent[child].index].getPolygon(a)); 
+							createdChildren[child].setPolygon(a, parent[child].getPolygon(a)); 
 						for (int b = pos1; b < pos2; b++)
-							createdChildren[child].setPolygon(b, createImageInitPop[parent[1 - child].index].getPolygon(b));
+							createdChildren[child].setPolygon(b, parent[1 - child].getPolygon(b));
 						for (int c = pos2; c < nbrOfPolys; c++)
-							createdChildren[child].setPolygon(c, createImageInitPop[parent[child].index].getPolygon(c));
+							createdChildren[child].setPolygon(c, parent[child].getPolygon(c));
 					}
 				}
 					
@@ -204,8 +204,8 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 					}
 				}
 				
-				createImagePop[counter + popSize] = createdChildren[0];
-				createImagePop[counter + 1 + popSize] = createdChildren[1];
+				populationLarge[counter + popSize] = new CreatePolygonImage(createdChildren[0]);
+				populationLarge[counter + 1 + popSize] = new CreatePolygonImage(createdChildren[1]);
 				
 				counter += 2;				
 			}
@@ -214,57 +214,40 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 			/* Transfer all fitness scores to newPopulation array. */
 			for (int n = 0; n < popSize; n++) {
 				newBest = -1;
-				/* Add the parents. */
-				newPopulation[n] = new Chromosome(n);
-				newPopulation[n].fitness = getFitness(createImageInitPop[n].getImage());
-				/* Add the children. */
-				newPopulation[n + popSize] = new Chromosome(n + popSize);
-				newPopulation[n + popSize].fitness = getFitness(createImagePop[n + popSize].getImage());
-
-				
 				/* Check if current fitness is the better one. */
-				if(newPopulation[n].fitness < bestChromosome.fitness)
+				if(populationLarge[n].getFitness() < bestChromosome.getFitness())
 					newBest = 0;
-				else if(newPopulation[n + popSize].fitness < bestChromosome.fitness)
+				else if(populationLarge[n + popSize].getFitness() < bestChromosome.getFitness())
 					newBest = 1;
 				if(newBest >= 0) {
-					bestChromosome = new Chromosome(n);
-					bestChromosome.fitness = newPopulation[n + newBest * popSize].fitness;
-					setProcessingImage(createImagePop[bestChromosome.index]);
+					bestChromosome = new CreatePolygonImage(populationLarge[n + newBest * popSize]);
+					setProcessingImage(bestChromosome);
 				}			
 			}
 			
 			/* Sort newPopulation by fitness. */
-			Arrays.sort(newPopulation);
+			Arrays.sort(populationLarge);
 			
 			// DEBUG
-			for (int i = 0; i < population.length; i++)
-				System.out.println("Sorted newpopulation #" + i + " index: " + population[i].index +
-						"   fitness: " + population[i].fitness);
-			System.out.println("Current best fitness set to: " + bestChromosome.fitness); 
+//			for (int i = 0; i < populationLarge.length; i++)
+//				System.out.println("Sorted newpopulation #" + i + " fitness: " + populationLarge[i].getFitness());
+//			System.out.println("Current best fitness set to: " + bestChromosome.getFitness()); 
 			
-			/* Empty createImageInitPop array.*/
-			Arrays.fill(createImageInitPop, null);
-			
-			/* Transfer the best half of newPopulation to the population array,
-			 * and copy the best createImages from the createImagePop to the
-			 * createImageInitPop array, becoming the population with the top
-			 * popSize fitness scores.
+			/* Set the worst half of the population array to initiation chromosome,
+			 * rendering them empty with max fitness score.
 			 */
-			for (int p = 0; p < population.length; p++) {
-				population[p] = newPopulation[p];
-				createImageInitPop[p] = new CreatePolygonImage(createImagePop[population[p].index]);
-			}
+			for (int p = popSize; p < populationLarge.length; p++)
+				populationLarge[p] = new CreatePolygonImage(chromosome);
 			
 			nanoTimer.stopTimer();
 			/* Print every 5 generations. */
 			if(iterations % 5 == 0)
-				nanoTimer.printElapsedTime("   Best fitness: " + bestChromosome.fitness);
+				nanoTimer.printElapsedTime("   Best fitness: " + bestChromosome.getFitness());
 			
 			iterations++;
 		}
 				
-		return createImageInitPop[bestChromosome.index];
+		return bestChromosome;
 	}
 	
 	public CreatePolygonImage getProcessingImage() {
@@ -304,22 +287,5 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 
 	public void setPopSize(int popSize) {
 		this.popSize = popSize;
-	}
-	
-	private class Chromosome implements Comparable<Chromosome> {
-		int index;
-		long fitness;
-		 
-		public Chromosome(int index) {
-			this.index = index;
-			this.fitness = Long.MAX_VALUE;
-		}
-
-		@Override
-		public int compareTo(Chromosome o) {
-	        if(fitness > o.fitness) return 1;
-	        if(fitness < o.fitness) return -1;
-			return 0;
-		}
 	}
 }
