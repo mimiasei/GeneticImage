@@ -7,7 +7,7 @@ public interface Constants {
 	/* Millisecond frequency for how often best image is updated from algorithm thread. */ 
 	static final int CHECK_FREQUENCY = 4000;
 	/* Number of generations to iterate generic algorithm loop. */
-	static final int NUMBER_OF_GENERATIONS = 5;
+	static final int NUMBER_OF_GENERATIONS = 400000;
 	
 	// Random algorithm class:
 	
@@ -28,13 +28,13 @@ public interface Constants {
 	/* Max percentage of POLYGON_COUNT mutations per child. */
 	static final double MAX_MUTATIONS = 0.10;
 	/* Population size of chromosomes. */
-	static final int POPULATION_SIZE = 12; // must be even number
+	static final int POPULATION_SIZE = 50; // must be even number
 	
 	// Polygon class:
 	
 	/* How many vertices each polygon is made up of. */
 	static final int POLYGON_VERTICES = 6; // must be even number
 	/* Factor for how much smaller length and height of polygons should be compared to image. */
-	static final double POLYGON_MIN_SCALE = 0.05;
-	static final double POLYGON_MAX_SCALE = 0.15;
+	static final double POLYGON_MIN_SCALE = 0.1;
+	static final double POLYGON_MAX_SCALE = 0.3;
 }

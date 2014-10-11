@@ -6,7 +6,6 @@ import java.awt.Graphics;
 //import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-
 import javax.swing.JComponent;
 
 @SuppressWarnings("serial")
@@ -92,15 +91,8 @@ public class CreatePolygonImage extends JComponent implements Comparable<CreateP
 	
 	@Override
 	public int compareTo(CreatePolygonImage o) {
-        if(this.fitness > o.getFitness()) {
-        	System.out.println("this fitness: " + this.fitness + " is larger than: " + o.getFitness());
-        	return 1;
-        }
-        if(this.fitness < o.getFitness()) {
-        	System.out.println("this fitness: " + this.fitness + " is less than: " + o.getFitness());
-        	return -1;
-        }
-        System.out.println("this fitness: " + this.fitness + " is equal to: " + o.getFitness());
+        if(this.fitness > o.getFitness()) return 1;
+        if(this.fitness < o.getFitness()) return -1;
         return 0;
 	}
 }

@@ -21,12 +21,10 @@ public class Polygon implements Constants {
 	/* Create new random polygon using polar coordinates. */
 	public void createRandomPolar(int width, int height) {
 		Random random = new Random();
-		int radius;
+		int radius = (int)(width * POLYGON_MAX_SCALE);
 		/* If POLYGON_MAX_SCALE == POLYGON_MIN_SCALE only use POLYGON_MAX_SCALE. */
-		if(POLYGON_MAX_SCALE - POLYGON_MIN_SCALE > 0)
+		if(POLYGON_MAX_SCALE - POLYGON_MIN_SCALE > 0.0)
 			radius = random.nextInt((int)(width * POLYGON_MAX_SCALE));
-		else
-			radius = (int)(width * POLYGON_MAX_SCALE);
 		/* Make sure radius is minimum 2. */
 		radius = (radius < 2 ? 2 : radius);
 		int origoX = random.nextInt(width - radius) + radius;
@@ -42,12 +40,6 @@ public class Polygon implements Constants {
 				vtx[i + j] = new Point(x, y);		
 			}
 		}		
-	}
-	
-	public void setPolygon(Point p0, Point p1, Point p2) {
-		vtx[0] = p0;
-		vtx[1] = p1;
-		vtx[2] = p2;		
 	}
 	
 	private int[] getPolygonC(boolean isX) {
@@ -115,5 +107,13 @@ public class Polygon implements Constants {
 
 	public void setColour(Color colour) {
 		this.colour = colour;
+	}
+	
+	@Override
+	public String toString() {
+		String text = "";
+		for (byte i = 0; i < vtx.length; i++)
+			text += ("Vtx" + i + " = (" + vtx[i].x + ", " + vtx[i].y + ") ");
+		return text;
 	}
 }
