@@ -21,10 +21,12 @@ public class Polygon implements Constants {
 	/* Create new random polygon using polar coordinates. */
 	public void createRandomPolar(int width, int height) {
 		Random random = new Random();
-		int radius = random.nextInt((int)(width * POLYGON_MAX_SCALE));
+		int radius;
 		/* If POLYGON_MAX_SCALE == POLYGON_MIN_SCALE only use POLYGON_MAX_SCALE. */
 		if(POLYGON_MAX_SCALE - POLYGON_MIN_SCALE > 0)
-			radius += POLYGON_MIN_SCALE;
+			radius = random.nextInt((int)(width * POLYGON_MAX_SCALE));
+		else
+			radius = (int)(width * POLYGON_MAX_SCALE);
 		/* Make sure radius is minimum 2. */
 		radius = (radius < 2 ? 2 : radius);
 		int origoX = random.nextInt(width - radius) + radius;

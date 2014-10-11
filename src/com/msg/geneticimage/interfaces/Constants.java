@@ -7,7 +7,7 @@ public interface Constants {
 	/* Millisecond frequency for how often best image is updated from algorithm thread. */ 
 	static final int CHECK_FREQUENCY = 4000;
 	/* Number of generations to iterate generic algorithm loop. */
-	static final int NUMBER_OF_GENERATIONS = 400000;
+	static final int NUMBER_OF_GENERATIONS = 5;
 	
 	// Random algorithm class:
 	
@@ -16,9 +16,9 @@ public interface Constants {
 	// Main genetic algorithm class:
 	
 	/* enums for setting type of parent selection. */
-	static enum ParentChoice {RND_BEST, RND_BEST_WORST, TOP_TWO_BEST, TOP_BEST_WORST, RND_WORST};
+	static enum ParentChoice {RND_TWO, RND_BEST_WORST, TOP_TWO_BEST};
 	/* Percent chance of entering cross-over stage. */
-	static final ParentChoice PARENT_SELECTION = ParentChoice.TOP_TWO_BEST;	
+	static final ParentChoice PARENT_SELECTION = ParentChoice.RND_TWO;	
 	/* Percent chance of entering cross-over stage. */
 	static final double CROSSOVER_RATIO = 0.85;
 	/* Percent chance of entering mutation stage. */
@@ -28,13 +28,13 @@ public interface Constants {
 	/* Max percentage of POLYGON_COUNT mutations per child. */
 	static final double MAX_MUTATIONS = 0.10;
 	/* Population size of chromosomes. */
-	static final int POPULATION_SIZE = 10; // must be even number
+	static final int POPULATION_SIZE = 12; // must be even number
 	
 	// Polygon class:
 	
 	/* How many vertices each polygon is made up of. */
 	static final int POLYGON_VERTICES = 6; // must be even number
 	/* Factor for how much smaller length and height of polygons should be compared to image. */
-	static final double POLYGON_MIN_SCALE = 0.1;
-	static final double POLYGON_MAX_SCALE = 0.1;
+	static final double POLYGON_MIN_SCALE = 0.05;
+	static final double POLYGON_MAX_SCALE = 0.15;
 }

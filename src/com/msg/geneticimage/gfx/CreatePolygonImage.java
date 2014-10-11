@@ -92,12 +92,16 @@ public class CreatePolygonImage extends JComponent implements Comparable<CreateP
 	
 	@Override
 	public int compareTo(CreatePolygonImage o) {
-		if(o != null) {
-	        if(fitness > o.getFitness()) return 1;
-	        if(fitness < o.getFitness()) return -1;
-	        return 0;
-		} else
-			return 1;
+        if(this.fitness > o.getFitness()) {
+        	System.out.println("this fitness: " + this.fitness + " is larger than: " + o.getFitness());
+        	return 1;
+        }
+        if(this.fitness < o.getFitness()) {
+        	System.out.println("this fitness: " + this.fitness + " is less than: " + o.getFitness());
+        	return -1;
+        }
+        System.out.println("this fitness: " + this.fitness + " is equal to: " + o.getFitness());
+        return 0;
 	}
 }
 
