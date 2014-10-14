@@ -1,7 +1,6 @@
 package com.msg.geneticimage.algorithm;
 
 import java.awt.Color;
-import java.awt.List;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,6 +23,7 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 	private CreatePolygonImage processingImage;
 	private NanoTimer nanoTimer = new NanoTimer();
 	private float maxFitnessRatio;
+	ArrayList<CreatePolygonImage> populationLarge;
 	
 	public GeneticAlgorithm(BufferedImage compareImage) {
 		popSize = POPULATION_SIZE;
@@ -36,7 +36,7 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 	public CreatePolygonImage process(CreatePolygonImage createImage) {
 		
 		/* The createImage array for both parents and children, of length popSize * 2. */
-		ArrayList<CreatePolygonImage> populationLarge = new ArrayList<CreatePolygonImage>();
+		populationLarge = new ArrayList<CreatePolygonImage>();
 		
 		boolean[] usedPop = new boolean[popSize << 1];
 		int iterations = 0;
@@ -50,20 +50,29 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 				new CreatePolygonImage(createImage.getWidth(), createImage.getHeight());
 		
 		CreatePolygonImage[] parent = new CreatePolygonImage[2];
+		CreatePolygonImage newCreateImage = new CreatePolygonImage(createImage);
 				
 		/* Initialize current best chromosome. */
 		bestChromosome = new CreatePolygonImage(initialChromosome);
 		
+		/* 
+		 * Random algorithm phase. Create initial population randomly.
+		 */
+		
 		Algorithm<CreatePolygonImage> randomAlg = new RandomAlgorithm();		
 		/* Create images based on POLYGON_COUNT random polygons. */
-		randomAlg.setMaxIterations(POLYGON_COUNT);
+		randomAlg.setMaxIterations(maxIterations);
 		
 		/* Create popSize number of random images as chromosomes. */
 		for (byte i = 0; i < popSize; i++) {
-			createImage = randomAlg.process(createImage);
-			populationLarge.add(createImage);
-			populationLarge.get(i).setFitness(getFitness(createImage.getImage()));
+			newCreateImage = randomAlg.process(createImage);
+			populationLarge.add(newCreateImage);
+			populationLarge.get(i).setFitness(getFitness(newCreateImage.getImage(), compareImage));
 		}
+		
+		/* 
+		 * Random phase end.
+		 */
 				
 		/* Sort populationLarge by fitness. */
 		Collections.sort(populationLarge);
@@ -97,11 +106,8 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 			
 			/* Go through chromosomes via loop of half the size of popSize,
 			 * since two parents are crossed each loop.
-			 * 
-			 * Selecting one parent from the top half fitness scores and the
-			 * other parent from the bottom half.
-			 */
-			
+			 * Randomly choose one of three types of parent selection.
+			 */			
 			parentChoice = ParentChoice.values()[random.nextInt(ParentChoice.values().length)];
 			for (byte i = 0; i < popSize; i += 2) {			
 				switch (parentChoice) {
@@ -147,7 +153,7 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 					/* Create totally random child if ratio permits it. */
 					if(random.nextFloat() < RANDOMCHILD_RATIO) {
 						createdChildren[c] = new CreatePolygonImage(randomAlg.process(createImage));
-						createdChildren[c].setFitness(getFitness(createdChildren[c].getImage()));
+						createdChildren[c].setFitness(getFitness(createdChildren[c].getImage(), compareImage));
 					} else
 						/* Create child as copy of its parent. */
 						createdChildren[c] = new CreatePolygonImage(parent[c]);
@@ -155,12 +161,12 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 				
 				/* Do two-point cross-over if ratio permits it. */
 				if(random.nextFloat() < CROSSOVER_RATIO) {
-					byte pos1 = (byte)random.nextInt(POLYGON_COUNT >> 1);
-					byte pos2 = (byte)(random.nextInt(POLYGON_COUNT >> 1) + pos1);
+					byte pos1 = (byte)random.nextInt(maxIterations);
+					byte pos2 = (byte)(random.nextInt(maxIterations - pos1) + pos1);
 					for (byte child = 0; child < 2; child++) {
 						for (byte b = (byte)pos1; b < pos2; b++)
 							createdChildren[child].setPolygon(b, parent[1 - child].getPolygon(b));
-						createdChildren[child].setFitness(getFitness(createdChildren[child].getImage()));
+						createdChildren[child].setFitness(getFitness(createdChildren[child].getImage(), compareImage));
 					}
 				}
 					
@@ -171,18 +177,18 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 				Polygon poly;
 				if(random.nextFloat() < MUTATION_RATIO) {
 					for (byte c = 0; c < 2; c++) {
-						byte nbr = (byte)(((random.nextDouble() * MAX_MUTATIONS) * POLYGON_COUNT) + 1);
+						byte nbr = (byte)(((random.nextDouble() * MAX_MUTATIONS) * maxIterations) + 1);
 						for (int n = 0; n < nbr; n++) {
-							byte pos = (byte)random.nextInt(POLYGON_COUNT);
+							byte pos = (byte)random.nextInt(maxIterations);
 							poly = new Polygon();
 							poly.createRandomPolar(createImage.getWidth(), createImage.getHeight());
 							createdChildren[c].setPolygon(pos, poly);
 						}
-						createdChildren[c].setFitness(getFitness(createdChildren[c].getImage()));
+						createdChildren[c].setFitness(getFitness(createdChildren[c].getImage(), compareImage));
 					}
 				}
 				
-				// Copy the children to bottom half of population array. */
+				/* Copy the children to bottom half of population array. */
 				for (byte c = 0; c < 2; c++)
 					populationLarge.add(new CreatePolygonImage(createdChildren[c]));
 			}
@@ -208,7 +214,6 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 			
 			iterations++;
 			diffRatio = bestChromosome.getFitness() / (float)startFitness;
-//			System.out.println("diffRatio: " + diffRatio);
 		}
 				
 		return bestChromosome;
@@ -221,8 +226,29 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 	public void setProcessingImage(CreatePolygonImage processingImage) {
 		this.processingImage = new CreatePolygonImage(processingImage);
 	}
+	
+	public ArrayList<CreatePolygonImage> getPopulation() {
+		return populationLarge;
+	}
+	
+	public void setPopulation(ArrayList<CreatePolygonImage> populationLarge) {
+		this.populationLarge.clear();
+		Collections.addAll(this.populationLarge, (CreatePolygonImage[])populationLarge.toArray());
+	}
 
-	public long getFitness(BufferedImage image) {
+	public int getPopSize() {
+		return popSize;
+	}
+
+	public void setPopSize(int popSize) {
+		this.popSize = popSize;
+	}
+	
+	public void setMaxFitnessRatio(float maxFitnessRatio) {
+		this.maxFitnessRatio = maxFitnessRatio;
+	}
+	
+	public static long getFitness(BufferedImage image, BufferedImage compareImage) {
 		long fitness = 0;
 		for (int y = 0; y < image.getHeight(); y++)
 			for (int x = 0; x < image.getWidth(); x++) {
@@ -240,21 +266,8 @@ public class GeneticAlgorithm extends Algorithm<CreatePolygonImage> implements C
 		 
 		        /* Add the pixel fitness to the total fitness (lower is better). */
 				fitness += pixelFitness;
-			}
-		 
+			}	 
 		return fitness;
-	}
-
-	public int getPopSize() {
-		return popSize;
-	}
-
-	public void setPopSize(int popSize) {
-		this.popSize = popSize;
-	}
-	
-	public void setMaxFitnessRatio(float maxFitnessRatio) {
-		this.maxFitnessRatio = maxFitnessRatio;
 	}
 	
 	// DEBUG

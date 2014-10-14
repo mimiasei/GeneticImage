@@ -7,7 +7,7 @@ import com.msg.geneticimage.gfx.CreatePolygonImage;
 import com.msg.geneticimage.gfx.Polygon;
 
 public class RandomAlgorithm extends Algorithm<CreatePolygonImage> {
-	
+		
 	public RandomAlgorithm() {
 		// empty constructor
 	}
@@ -20,6 +20,12 @@ public class RandomAlgorithm extends Algorithm<CreatePolygonImage> {
 	 */
 	@Override
 	public CreatePolygonImage process(CreatePolygonImage image) {
+		/* If parameter image has any polygons at all then roll vs ratio
+		 * and if permitted, return it thus exit algorithm. 
+		 */
+		if(image.getNumberOfPolygons() > 0)
+			return image;
+		
 		CreatePolygonImage createImage = new CreatePolygonImage(image.getWidth(), image.getHeight());
 		Polygon polygon = null;
 		Random random = new Random();
@@ -28,9 +34,8 @@ public class RandomAlgorithm extends Algorithm<CreatePolygonImage> {
 		/* Create and add maxIterations number of polygons 
 		 * to CreatePolygonImage object.
 		 */
-		for (int i = 0; i < maxIterations; i++) {
+		for (int i = 0; i < maxIterations; i++) {			
 			polygon = new Polygon();
-			
 			/* Roll random colour channels. */
 			for (int c = 0; c < ch.length; c++)
 				ch[c] = random.nextInt(255);

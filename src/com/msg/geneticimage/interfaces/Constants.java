@@ -4,12 +4,16 @@ public interface Constants {
 	
 	// Main class:
 	
+	/* Input image path. */
+	static final String IMAGE_PATH = "images/mona_lisa1024px.jpg";	
 	/* Millisecond frequency for how often best image is updated from algorithm thread. */ 
 	static final int CHECK_FREQUENCY = 4000;
 	/* Number of generations to iterate generic algorithm loop. */
 	static final int NUMBER_OF_GENERATIONS = 400000;
 	/* Maximum difference ratio of current and starting fitness score. (must be less than this) */
-	static final float MAX_CURRENT_START_FITNESS_RATIO = 0.5f;
+	static final float MAX_CURRENT_START_FITNESS_RATIO = 0.55f;
+	/* Factor being multiplied by the power of i to POLYGON_COUNT */
+	static final float POLYGON_COUNT_POWER_FACTOR = 0.92f;
 	
 	// Random algorithm class:
 	
@@ -30,13 +34,13 @@ public interface Constants {
 	/* Percent chance of entering cross-over stage. */
 	static final ParentChoice PARENT_SELECTION = ParentChoice.TOP_TWO_BEST;	
 	/* Percent chance of entering cross-over stage. */
-	static final float CROSSOVER_RATIO = 0.83f;
+	static final float CROSSOVER_RATIO = 0.85f;
 	/* Percent chance of entering mutation stage. */
 	static final float RANDOMCHILD_RATIO = 0.0f;
 	/* Percent chance of entering mutation stage. */
-	static final float MUTATION_RATIO = 0.09f;
+	static final float MUTATION_RATIO = 0.08f;
 	/* Max percentage of POLYGON_COUNT mutations per child. */
-	static final float MAX_MUTATIONS = 0.12f;
+	static final float MAX_MUTATIONS = 0.05f;
 	/* Population size of chromosomes. */
 	static final int POPULATION_SIZE = 50; // must be even number
 	
@@ -45,6 +49,6 @@ public interface Constants {
 	/* How many vertices each polygon is made up of. */
 	static final int POLYGON_VERTICES = 6; // must be even number
 	/* Factor for how much smaller length and height of polygons should be compared to image. */
-	static final float POLYGON_MIN_SCALE = 0.1f;
-	static final float POLYGON_MAX_SCALE = 0.3f;
+	static final float POLYGON_MIN_SCALE = 0.05f;
+	static final float POLYGON_MAX_SCALE = 0.5f;
 }

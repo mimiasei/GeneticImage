@@ -54,11 +54,19 @@ public class CreatePolygonImage extends JComponent implements Comparable<CreateP
 				
 		for (Polygon poly : polygons) {
 			g2.setColor(poly.getColour());
-			g2.fillPolygon(poly.getPolygonX(), poly.getPolygonY(), poly.getVertexLength());
+			g2.fillPolygon(scaleCoords(poly, poly.getPolygonX()), 
+					scaleCoords(poly, poly.getPolygonY()), poly.getVertexLength());
 		}
 		g2.setColor(Color.LIGHT_GRAY);
 		g2.dispose();
 		return offImg;
+	}
+	
+	public int[] scaleCoords(Polygon poly, int[] coordsArray) {
+		float ratio = width / (float)poly.getWidth();
+		for (int i = 0; i < coordsArray.length; i++)
+			coordsArray[i] = (int)(coordsArray[i] * ratio);
+		return coordsArray;
 	}
  	
 	public BufferedImage getImage() {
@@ -69,8 +77,16 @@ public class CreatePolygonImage extends JComponent implements Comparable<CreateP
 		return width;
 	}
 	
+	public void setWidth(int width) {
+		this.width = width;
+	}
+	
 	public int getHeight() {
 		return height;
+	}
+	
+	public void setHeight(int height) {
+		this.height = height;
 	}
 
 	public long getFitness() {
