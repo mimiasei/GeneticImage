@@ -4,7 +4,6 @@ import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
@@ -13,8 +12,10 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import com.msg.geneticimage.algorithm.Algorithm;
 import com.msg.geneticimage.algorithm.GeneticAlgorithm;
-import com.msg.geneticimage.gfx.CreatePolygonImage;
+import com.msg.geneticimage.algorithm.RandomAlgorithm;
+import com.msg.geneticimage.gfx.PolygonImage;
 import com.msg.geneticimage.interfaces.Constants;
 
 @SuppressWarnings("serial")
@@ -22,25 +23,23 @@ public class GeneticImage extends JPanel implements Constants {
 	
 	private GeneticAlgorithm geneticAlg;
 	private BufferedImage image, compareImage;
-	private CreatePolygonImage createImage, resultImage = null;
-	long startFitness, fitness;
+	long startFitness;
 	
-	public GeneticImage(BufferedImage image) {
+	public GeneticImage(String imagePath) {
 		JFrame frame = new JFrame();
-		JLabel label, label2;
+		JLabel compareImageLabel, bestPolygonImageLabel;
 		Thread thread;	
 		GeneticAlgThread runnableGenAlg;
-		this.image = image;
 		
+		/* Load compare image. */
 		try {
-//			compareImage = ImageIO.read(new File(IMAGE_PATH));
-			this.image = ImageIO.read(this.getClass().getClassLoader().getResource(IMAGE_PATH));
+			this.image = ImageIO.read(this.getClass().getClassLoader().getResource(imagePath));
 		} catch (IOException e) {
 			System.out.println("Cannot find image file!");
+			System.exit(0);
 		}
-		compareImage = new BufferedImage(this.image.getWidth(), this.image.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
-		Point startSize = new Point(compareImage.getWidth(), compareImage.getHeight()), currentSize;
+		Point startSize = new Point(this.image.getWidth(), this.image.getHeight()), currentSize;
 		
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setAlwaysOnTop(true);
@@ -49,59 +48,78 @@ public class GeneticImage extends JPanel implements Constants {
 		 * Running genetic algorithm first on the 1/32 scale image, then taking the result
 		 * into the next scaling level (1/16 and so on).
 		 */
-		int imageArea = startSize.x * startSize.y;
+		int imageArea = startSize.x * startSize.y, scaledArea = imageArea;
+		Point scaledSize = startSize;
 		byte bitShift = 1;
-		while (imageArea > 300) 
-			imageArea >>= bitShift++;
+		while (scaledArea > 300) {
+			scaledSize = new Point(startSize.x >> bitShift, startSize.y >> bitShift);
+			scaledArea = scaledSize.x * scaledSize.y;
+			bitShift++;
+		}
 		bitShift--;
 		
+		// DEBUG
+		bitShift = 1;
+		
+		currentSize = new Point(startSize.x >> bitShift, startSize.y >> bitShift);
+		compareImage = getScaledImage(image, currentSize);
+		
+		/* 
+		 * Random algorithm phase. Create initial population randomly.
+		 */		
+		Algorithm<PolygonImage> randomAlg = new RandomAlgorithm();
+		PolygonImage[] population = new PolygonImage[POPULATION_SIZE];
+		PolygonImage polygonImage = new PolygonImage(compareImage.getWidth(), compareImage.getHeight());
+		PolygonImage currentBestImage;
+		/* Create images based on POLYGON_COUNT number of random polygons. */
+		randomAlg.setMaxIterations(POLYGON_COUNT);		
+		/* Create POPULATION_SIZE number of random PolygonImages as chromosomes. */
+		for (byte i = 0; i < POPULATION_SIZE; i++) {
+			polygonImage = randomAlg.process(polygonImage);
+			polygonImage.setFitness(PolygonImage.getFitness(polygonImage.getImage(), compareImage));
+			population[i] = polygonImage;
+		}
+		
+		currentBestImage = population[0];
+		startFitness = population[0].getFitness();
+		
+		/*
+		 * Genetic algorithm multi-level phase of bitShift+1 number of levels.
+		 */
 		for (int i = bitShift; i >= 0; i--) {
 			// DEBUG
 			System.out.println("\nInitial (start) size: " + startSize);
+			
 			currentSize = new Point(startSize.x >> i, startSize.y >> i);
+			
 			// DEBUG
 			System.out.println("Shifting image by: " + i + " -> Current size: " + currentSize);
-			compareImage = new BufferedImage(currentSize.x, currentSize.y, BufferedImage.TYPE_INT_ARGB);
-			Graphics g = compareImage.createGraphics();
-			g.drawImage(this.image, 0, 0, currentSize.x, currentSize.y, null);
-			g.dispose();
-		
-			Point newSize = new Point(compareImage.getWidth(), compareImage.getHeight());
-			// DEBUG
-			System.out.println("new Start size: " + newSize);
-
-			createImage = new CreatePolygonImage(compareImage.getWidth(), compareImage.getHeight());
+			
+			compareImage = getScaledImage(this.image, currentSize);
 			
 			geneticAlg = new GeneticAlgorithm(compareImage);
-			geneticAlg.setMaxFitnessRatio(0.999f);
-//			float polygonRatio = (float)Math.pow(POLYGON_COUNT_POWER_FACTOR, i);
-//			geneticAlg.setMaxIterations((int)(POLYGON_COUNT * polygonRatio));
+			/* Set number of polygons for the algorithm. */
 			geneticAlg.setMaxIterations(POLYGON_COUNT);
-			
-			// DEBUG
-			System.out.println("Polygon count for random alg: " + geneticAlg.getMaxIterations());
-			
-			createImage = geneticAlg.process(createImage);
-			startFitness = createImage.getFitness();
-			fitness = startFitness;
-			
-			/* Set number of generations. */
+			/* Set ratio for how much smaller best fitness must be compared to initial fitness
+			 * before stopping algorithm loop. 
+			 */
 			geneticAlg.setMaxFitnessRatio(MAX_CURRENT_START_FITNESS_RATIO);
 			
-			runnableGenAlg = new GeneticAlgThread(createImage);
-			thread = new Thread(runnableGenAlg); 
-			thread.start();
 			// DEBUG
 			System.out.println("Start fitness: " + startFitness);
 			
-			label = new JLabel(new ImageIcon(createImage.getImage()));
-			label2 = new JLabel(new ImageIcon(compareImage));
+			runnableGenAlg = new GeneticAlgThread(population);
+			thread = new Thread(runnableGenAlg); 
+			thread.start();
+					
+			compareImageLabel = new JLabel(new ImageIcon(compareImage));
+			bestPolygonImageLabel = new JLabel(new ImageIcon(currentBestImage.getImage()));
 			
 			frame.add(this);
 			frame.getContentPane().setLayout(new FlowLayout());
-			frame.getContentPane().add(label2);
-			frame.getContentPane().add(label);
-			frame.setTitle("Best: " + createImage.getFitness());
+			frame.getContentPane().add(compareImageLabel);
+			frame.getContentPane().add(bestPolygonImageLabel);
+			frame.setTitle("Best: " + currentBestImage.getFitness());
 			frame.pack();
 			frame.setVisible(true);
 	
@@ -113,54 +131,62 @@ public class GeneticImage extends JPanel implements Constants {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				createImage = runnableGenAlg.getProcessingImage();
-				frame.getContentPane().remove(label);
-				label = new JLabel(new ImageIcon(createImage.getImage()));
-				frame.getContentPane().add(label);
-				frame.setTitle("Best: " + createImage.getFitness());
+				population = runnableGenAlg.getPopulation();
+				frame.getContentPane().remove(bestPolygonImageLabel);
+				currentBestImage = runnableGenAlg.getProcessingImage();
+				bestPolygonImageLabel = new JLabel(new ImageIcon(currentBestImage.getImage()));
+				frame.getContentPane().add(bestPolygonImageLabel);
+				frame.setTitle("Best: " + currentBestImage.getFitness());
 				frame.pack();
 			}
 			
 			/* Hide and empty the frame window. */
 			if(frame.isVisible())
 				frame.setVisible(false);
-			frame.remove(label);
-			frame.remove(label2);			
+			frame.remove(compareImageLabel);
+			frame.remove(bestPolygonImageLabel);			
 			frame.remove(this);
+			frame.pack();
 			
-			createImage = runnableGenAlg.getCreateImage();
+//			currentBestImage = runnableGenAlg.getProcessingImage();
 			
 			// DEBUG
-			if(createImage != null)
-				System.out.println("Final fitness = " + createImage.getFitness());
+			if(currentBestImage != null)
+				System.out.println("Final fitness = " + currentBestImage.getFitness());
 		}
+	}
+	
+	public static BufferedImage getScaledImage(BufferedImage image, Point size) {
+		BufferedImage scaledImage = new BufferedImage(size.x, size.y, BufferedImage.TYPE_INT_ARGB);
+		Graphics g = scaledImage.createGraphics();
+		g.drawImage(image, 0, 0, size.x, size.y, null);
+		g.dispose();
+		return scaledImage;
+	}
+	
+	public static void main(String[] args) {
+		new GeneticImage(IMAGE_PATH);
 	}
 	
 	private class GeneticAlgThread implements Runnable {
 		
-		CreatePolygonImage threadCreateImage;
+		PolygonImage[] threadPopulation;
 		
-		public GeneticAlgThread(CreatePolygonImage threadCreateImage) {
-			this.threadCreateImage = threadCreateImage;
+		public GeneticAlgThread(PolygonImage[] threadPopulation) {
+			this.threadPopulation = threadPopulation;
 		}
 		
 		@Override
 		public void run() {
-			threadCreateImage = geneticAlg.process(new CreatePolygonImage(compareImage.getWidth(), compareImage.getHeight()));
+			threadPopulation = geneticAlg.process(threadPopulation);
 		}
 		
-		public CreatePolygonImage getProcessingImage() {
+		public PolygonImage getProcessingImage() {
 			return geneticAlg.getProcessingImage();
 		}
 		
-		public CreatePolygonImage getCreateImage() {
-			return threadCreateImage;
+		public PolygonImage[] getPopulation() {
+			return threadPopulation;
 		}		
 	}
-	
-	public static void main(String[] args) {
-		BufferedImage compareImage = new BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB);
-		new GeneticImage(compareImage);
-	}
-
 }

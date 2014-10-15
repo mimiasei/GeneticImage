@@ -6,48 +6,27 @@ import java.util.Arrays;
 import java.util.Random;
 
 import com.msg.geneticimage.interfaces.Constants;
+import com.msg.geneticimage.interfaces.Gene;
 
-public class Polygon implements Constants {
+public class Polygon implements Gene, Constants {
 	
 	private Point[] vtx;
-	private Color colour;
-	private int width, height;
+	private Colour colour;
+	private int area = 0;
 	
 	public Polygon() {
-		vtx = new Point[POLYGON_VERTICES];
+		Random random = new Random();
+		int polyVertices = random.nextInt(POLYGON_VERTICES) + 3;
+		polyVertices = polyVertices % 2 == 0 ? polyVertices : polyVertices - 1;
+		vtx = new Point[polyVertices];
 		Arrays.fill(vtx, new Point(0, 0));
-		colour = Color.WHITE;
-		width = height = 0;
+		colour = new Colour(Color.WHITE);
 	}
 	
 	/* Create new random polygon using polar coordinates. */
-	public void createRandomPolar(int width, int height) {
-		Random random = new Random();
-		this.width = width;
-		this.height = height;
-		int radius, radRnd, radRndMin;
-		int diagonal = (int)Math.sqrt(width*width + height*height);
-		radRnd = (int)(diagonal * POLYGON_MAX_SCALE);
-		radRndMin = (int)(diagonal * POLYGON_MIN_SCALE);
-		radRnd = (radRnd - radRndMin) > 3 ? radRnd : radRndMin + 4;
-		/* If POLYGON_MAX_SCALE == POLYGON_MIN_SCALE only use POLYGON_MAX_SCALE. */
-		if((POLYGON_MAX_SCALE - POLYGON_MIN_SCALE) > 0.0f)
-			radius = random.nextInt(radRnd - radRndMin) + radRndMin;
-		else
-			radius = random.nextInt(radRnd) + 4;
-		int origoX = random.nextInt(width - radius) + radius;
-		int origoY = random.nextInt(height - radius) + radius;
-		int x, y;
-		double theta = 0.0;
-		for (int i = 0; i < POLYGON_VERTICES; i += 2) {
-			for (int j = 0; j < 2; j++) {
-				theta = random.nextFloat() * (Math.PI / 2.0f) + theta;
-				theta = theta > (Math.PI * 2.0f) ? (Math.PI * 2.0f) : theta;
-				x = (int)(radius * Math.cos(theta)) + origoX;
-				y = (int)(radius * Math.sin(theta)) + origoY;
-				vtx[i + j] = new Point(x, y);		
-			}
-		}		
+	public void createRandomPolar(int area, int polyCount) {
+		this.area = area;
+		generateRandom(polyCount);
 	}
 	
 	private int[] getPolygonC(boolean isX) {
@@ -65,22 +44,6 @@ public class Polygon implements Constants {
 		return getPolygonC(false);
 	}
 	
-	public Point getVertex(int vertex) {
-		if(vertex < 0)
-			vertex = 0;
-		else if(vertex > 2)
-			vertex = 2;
-		return vtx[vertex];
-	}
-	
-	public void setVertex(int vertex, Point p) {
-		if(vertex < 0)
-			vertex = 0;
-		else if(vertex > 2)
-			vertex = 2;
-		vtx[vertex] = p;
-	}
-	
 	public int getDistance(Point p1, Point p2) {
 		int deltaX = p2.x - p1.x;
 		int deltaY = p2.y - p1.y;
@@ -92,34 +55,52 @@ public class Polygon implements Constants {
 	}
 
 	public Color getColour() {
-		return colour;
+		return colour.getRGBA();
 	}
 
 	public void setColour(Color colour) {
-		this.colour = colour;
+		this.colour = new Colour(colour);
 	}
 	
-	public int getWidth() {
-		return width;
+	public int getArea() {
+		return area;
 	}
-
-	public void setWidth(int width) {
-		this.width = width;
-	}
-
-	public int getHeight() {
-		return height;
-	}
-
-	public void setHeight(int height) {
-		this.height = height;
+	
+	public void setArea(int area) {
+		this.area = area;
 	}
 
 	@Override
-	public String toString() {
-		String text = "";
-		for (byte i = 0; i < vtx.length; i++)
-			text += ("Vtx" + i + " = (" + vtx[i].x + ", " + vtx[i].y + ") ");
-		return text;
+	public void mutate() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void generateRandom(int polyCount) {
+		Random random = new Random();
+		float radius, fuzziness;
+		/* Make initial radius half the diagonal divided by polyCount. */
+		radius = (float)Math.sqrt(area / (polyCount * Math.PI));
+				
+		fuzziness = random.nextFloat() * POLYGON_FUZZINESS_SCALE;
+		radius = ((1.0f - fuzziness) + (fuzziness * 2.0f)) * radius;
+		fuzziness = random.nextFloat() * RANDOM_RADIUS;
+		radius = ((1.0f - fuzziness) + (fuzziness * 2.0f)) * radius;
+					
+		int origoX = random.nextInt(width - (int)radius) + (int)radius;
+		int origoY = random.nextInt(height -(int)radius) + (int)radius;
+		int x, y;
+		double theta = 0.0;
+		for (int i = 0; i < vtx.length; i += 2) {
+			for (int j = 0; j < 2; j++) {
+				theta = random.nextFloat() * (Math.PI / 2.0f) + theta;
+				theta = theta > (Math.PI * 2.0f) ? (Math.PI * 2.0f) : theta;
+				x = (int)(radius * Math.cos(theta)) + origoX;
+				y = (int)(radius * Math.sin(theta)) + origoY;
+				vtx[i + j] = new Point(x, y);		
+			}
+		}
+		colour.generateRandom(0);
 	}
 }

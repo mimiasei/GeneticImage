@@ -6,26 +6,23 @@ import java.awt.Graphics;
 //import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import javax.swing.JComponent;
+//import javax.swing.JComponent;
 
-@SuppressWarnings("serial")
-public class CreatePolygonImage extends JComponent implements Comparable<CreatePolygonImage> {
+public class PolygonImage implements Comparable<PolygonImage> { // extends JComponent
 	
 	private ArrayList<Polygon> polygons = new ArrayList<Polygon>();
 	private int width, height;
-	private boolean isNew = true;
 	private long fitness = Long.MAX_VALUE;
 	
-	public CreatePolygonImage(int width, int height) {
+	public PolygonImage(int width, int height) {
 		this.width = width;
 		this.height = height;
 	}
 	
-	public CreatePolygonImage(CreatePolygonImage clone) {
+	public PolygonImage(PolygonImage clone) {
 		this.width = clone.width;
 		this.height = clone.height;
 		this.fitness = clone.fitness;
-		this.isNew = clone.isNew;
 		this.polygons.addAll(clone.polygons);
 	}
 	
@@ -77,16 +74,8 @@ public class CreatePolygonImage extends JComponent implements Comparable<CreateP
 		return width;
 	}
 	
-	public void setWidth(int width) {
-		this.width = width;
-	}
-	
 	public int getHeight() {
 		return height;
-	}
-	
-	public void setHeight(int height) {
-		this.height = height;
 	}
 
 	public long getFitness() {
@@ -96,17 +85,31 @@ public class CreatePolygonImage extends JComponent implements Comparable<CreateP
 	public void setFitness(long fitness) {
 		this.fitness = fitness;
 	}
-
-	public boolean isNew() {
-		return isNew;
-	}
-
-	public void setNew(boolean isNew) {
-		this.isNew = isNew;
+	
+	public static long getFitness(BufferedImage image, BufferedImage compareImage) {
+		long fitness = 0;
+		for (int y = 0; y < image.getHeight(); y++)
+			for (int x = 0; x < image.getWidth(); x++) {
+				Color c1 = new Color(image.getRGB(x, y));
+				Color c2 = new Color(compareImage.getRGB(x, y));
+		
+				/* Get delta per colour. */
+				int deltaRed = c1.getRed() - c2.getRed();
+				int deltaGreen = c1.getGreen() - c2.getGreen();
+				int deltaBlue = c1.getBlue() - c2.getBlue();
+		
+				/* Measure the distance between the colours in 3D space. */
+				long pixelFitness = 
+						deltaRed*deltaRed + deltaGreen*deltaGreen + deltaBlue*deltaBlue;
+		 
+		        /* Add the pixel fitness to the total fitness (lower is better). */
+				fitness += pixelFitness;
+			}	 
+		return fitness;
 	}
 	
 	@Override
-	public int compareTo(CreatePolygonImage o) {
+	public int compareTo(PolygonImage o) {
         if(this.fitness > o.getFitness()) return 1;
         if(this.fitness < o.getFitness()) return -1;
         return 0;
