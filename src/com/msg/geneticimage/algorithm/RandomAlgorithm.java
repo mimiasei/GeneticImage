@@ -18,20 +18,14 @@ public class RandomAlgorithm extends Algorithm<PolygonImage> {
 	 */
 	@Override
 	public PolygonImage process(PolygonImage polygonImage) {
-		PolygonImage randomPolygonImage = new PolygonImage(polygonImage.getWidth(), polygonImage.getHeight());
-		Polygon polygon = null;
+		PolygonImage randomPolygonImage = new PolygonImage(polygonImage.getGeneticImage(), maxIterations);
 		
 		/* Create and add maxIterations number of polygons 
 		 * to PolygonImage object.
 		 */
-		for (int i = 0; i < maxIterations; i++) {			
-			polygon = new Polygon();
-			
-			/* Create random polygon. */
-			polygon.createRandomPolar(polygonImage.getWidth() * polygonImage.getHeight(), maxIterations);
-			
+		for (int i = 0; i < maxIterations; i++) {		
 			/* Add the new polygon to list in PolygonImage. */
-			randomPolygonImage.addPolygon(polygon);
+			randomPolygonImage.addPolygon(new Polygon(polygonImage));
 		}
 
 		return randomPolygonImage;

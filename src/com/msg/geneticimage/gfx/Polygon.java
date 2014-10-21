@@ -2,7 +2,7 @@ package com.msg.geneticimage.gfx;
 
 import java.awt.Color;
 import java.awt.Point;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Random;
 
 import com.msg.geneticimage.interfaces.Constants;
@@ -10,29 +10,35 @@ import com.msg.geneticimage.interfaces.Gene;
 
 public class Polygon implements Gene, Constants {
 	
-	private Point[] vtx;
+	private ArrayList<Vertex> vertices;
 	private Colour colour;
-	private int area = 0;
+	private PolygonImage polyImage;
+	private Point origo;
+	private float rMin, rMax;
 	
-	public Polygon() {
-		Random random = new Random();
-		int polyVertices = random.nextInt(POLYGON_VERTICES) + 3;
-		polyVertices = polyVertices % 2 == 0 ? polyVertices : polyVertices - 1;
-		vtx = new Point[polyVertices];
-		Arrays.fill(vtx, new Point(0, 0));
-		colour = new Colour(Color.WHITE);
+	public Polygon(PolygonImage polyImage) {
+		this.polyImage = polyImage;
+		origo = new Point(0, 0);
+		vertices = new ArrayList<Vertex>();
+		/* Generate random colour. */
+		colour = new Colour();
+		/* Generate random polygon using polar coordinates. */
+		generateRandom();
 	}
 	
-	/* Create new random polygon using polar coordinates. */
-	public void createRandomPolar(int area, int polyCount) {
-		this.area = area;
-		generateRandom(polyCount);
+	public Polygon(Polygon clone) {
+		this.vertices = new ArrayList<Vertex>(clone.vertices.size());
+		for (Vertex v : clone.vertices)
+			this.vertices.add(new Vertex(v));
+		this.colour = new Colour(clone.colour);
+		this.polyImage = new PolygonImage(clone.polyImage);
+		this.origo = new Point(clone.origo);
 	}
 	
 	private int[] getPolygonC(boolean isX) {
-		int[] array = new int[vtx.length];
-		for (int i = 0; i < vtx.length; i++)
-			array[i] = (isX ? vtx[i].x : vtx[i].y);
+		int[] array = new int[vertices.size()];
+		for (int i = 0; i < vertices.size(); i++)
+			array[i] = (isX ? vertices.get(i).getCoords().x : vertices.get(i).getCoords().y);
 		return array;
 	}
 	
@@ -44,14 +50,28 @@ public class Polygon implements Gene, Constants {
 		return getPolygonC(false);
 	}
 	
-	public int getDistance(Point p1, Point p2) {
-		int deltaX = p2.x - p1.x;
-		int deltaY = p2.y - p1.y;
-		return (int)Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+	public int getVertexLength() {
+		return vertices.size();
 	}
 	
-	public int getVertexLength() {
-		return vtx.length;
+	public Vertex getVertex(int index) {
+		return vertices.get(index);
+	}
+
+	public Point getOrigo() {
+		return origo;
+	}
+
+	public void setOrigo(Point origo) {
+		this.origo = origo;
+	}
+	
+	public static int getDistance(Point src, Point dst) {
+		int dist = 0;
+		int dX = dst.x - src.x;
+		int dY = dst.y - src.y;
+		dist = (int)(Math.sqrt(dX * dX + dY * dY));
+		return dist;
 	}
 
 	public Color getColour() {
@@ -61,46 +81,89 @@ public class Polygon implements Gene, Constants {
 	public void setColour(Color colour) {
 		this.colour = new Colour(colour);
 	}
-	
-	public int getArea() {
-		return area;
+
+	public PolygonImage getPolyImage() {
+		return polyImage;
 	}
-	
-	public void setArea(int area) {
-		this.area = area;
+
+	public void setPolyImage(PolygonImage polyImage) {
+		this.polyImage = polyImage;
 	}
 
 	@Override
 	public void mutate() {
-		// TODO Auto-generated method stub
-		
+		Random random = new Random(System.nanoTime());		
+		float factor;
+		if(random.nextFloat() < CHANGE_VERTICES_RATIO) {
+			
+			/* Mutate position of origo. */
+			factor = random.nextFloat() * VERTICES_FUZZINESS_SCALE;
+			factor = ((1.0f - VERTICES_FUZZINESS_SCALE) - (-(VERTICES_FUZZINESS_SCALE / 2.0f) + factor));		
+			origo = new Point((int)(origo.x * factor), (int)(origo.y * factor));
+			
+			if(random.nextBoolean()) {
+				/* Mutate position of vertices if passing MUTATION_RATIO test. */
+				for (Vertex v : vertices) {
+					factor = (1.0f - VERTICES_FUZZINESS_SCALE) + 
+							(random.nextFloat() * (VERTICES_FUZZINESS_SCALE * 2));
+					v.setXY(new Point((int)(v.getCoords().x * factor), 
+							(int)(v.getCoords().y * factor)));			
+				}
+			} else {		
+				/* Mutate scale of local coordinates of all vertices, 
+				 * changing the scale of the entire polygon.
+				 */
+				factor = (1.0f - VERTICES_FUZZINESS_SCALE) + 
+						(random.nextFloat() * (VERTICES_FUZZINESS_SCALE * 2));
+				for (Vertex v : vertices)
+					v.setXY(new Point((int)(v.getCoords().x * factor), 
+							(int)(v.getCoords().y * factor)));			
+			}
+		}
+		/* Change colour of polugon if passing CHANGE_COLOUR_RATIO test. */
+		if(random.nextFloat() < CHANGE_COLOUR_RATIO)
+			this.colour = new Colour();
 	}
 
 	@Override
-	public void generateRandom(int polyCount) {
-		Random random = new Random();
-		float radius, fuzziness;
+	public void generateRandom() {
+		Random random = new Random(System.nanoTime());
+		int w = polyImage.getGeneticImage().getImage().getWidth();
+		int h = polyImage.getGeneticImage().getImage().getHeight();
+		byte numberOfVertices = (byte)(random.nextInt(POLYGON_VERTICES) + 3);
+		float radius = getRandomRadius(w, h);	
+		this.origo = new Point(random.nextInt(w), random.nextInt(h));
+		convertPolarToEuclidean(numberOfVertices, radius);
+	}
+	
+	public float getRandomRadius(int w, int h) {
+		Random random = new Random(System.nanoTime());
 		/* Make initial radius half the diagonal divided by polyCount. */
-		radius = (float)Math.sqrt(area / (polyCount * Math.PI));
-				
-		fuzziness = random.nextFloat() * POLYGON_FUZZINESS_SCALE;
-		radius = ((1.0f - fuzziness) + (fuzziness * 2.0f)) * radius;
-		fuzziness = random.nextFloat() * RANDOM_RADIUS;
-		radius = ((1.0f - fuzziness) + (fuzziness * 2.0f)) * radius;
-					
-		int origoX = random.nextInt(width - (int)radius) + (int)radius;
-		int origoY = random.nextInt(height -(int)radius) + (int)radius;
-		int x, y;
-		double theta = 0.0;
-		for (int i = 0; i < vtx.length; i += 2) {
-			for (int j = 0; j < 2; j++) {
-				theta = random.nextFloat() * (Math.PI / 2.0f) + theta;
-				theta = theta > (Math.PI * 2.0f) ? (Math.PI * 2.0f) : theta;
-				x = (int)(radius * Math.cos(theta)) + origoX;
-				y = (int)(radius * Math.sin(theta)) + origoY;
-				vtx[i + j] = new Point(x, y);		
-			}
+		float fuzziness = random.nextFloat() * POLYGON_FUZZINESS_SCALE;
+		fuzziness = (0.5f - (-(POLYGON_FUZZINESS_SCALE / 2.0f) + fuzziness));
+//		System.out.println("fuzziness: " + fuzziness);
+//		float radius = (float)(Math.sqrt((w * h) / 
+//				(polyImage.getNumberOfPolygons() * Math.PI))) * fuzziness;
+		float radius = random.nextFloat() * (float)(w / 2.0f) * fuzziness;
+		return radius;
+	}
+	
+	public Point convertPolarToEuclidean(byte numberOfVertices, float radius) {
+		Random random = new Random(System.nanoTime());
+		float theta = 0.0f;
+		int x = 0, y = 0;
+		Vertex newVtx;
+		for (int i = 0; i < numberOfVertices; i++) {
+			newVtx = new Vertex(this);			
+			/* Calculate theta from random 0 - PI/2. */
+			theta = random.nextFloat() * ((float)Math.PI / 2.0f) + theta;
+			theta = theta > ((float)Math.PI * 2.0f) ? ((float)Math.PI * 2.0f) : theta;
+			/* Convert polar to euclidean space. */
+			x = (int)(radius * Math.cos(theta));
+			y = (int)(radius * Math.sin(theta));
+			newVtx.setXY(new Point(x, y));
+			vertices.add(newVtx);
 		}
-		colour.generateRandom(0);
+		return new Point(x, y);
 	}
 }

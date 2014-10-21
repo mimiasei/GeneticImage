@@ -4,6 +4,6 @@ public interface Gene {
 
 	public void mutate();
 	
-	public void generateRandom(int value);
+	public void generateRandom();
 	
 }
