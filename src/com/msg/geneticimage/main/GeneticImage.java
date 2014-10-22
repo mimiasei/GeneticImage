@@ -5,9 +5,9 @@ import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
-import java.io.IOException;
-
-import javax.imageio.ImageIO;
+//import java.io.IOException;
+//
+//import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -22,42 +22,44 @@ import com.msg.geneticimage.interfaces.Constants;
 public class GeneticImage implements Constants {
 	
 	private GeneticAlgorithm geneticAlg;
-	private BufferedImage image, compareImage, edgeCompareImage;
+	private BufferedImage image, compareImage, edgeCompareImage = null;
 	private byte bitShift, maxBitShift;
+	private int polyCount;
 	
-	public GeneticImage(String imagePath) {
+	public GeneticImage(BufferedImage inputImg) {
+		
+		this.image = inputImg;
+	}
+	
+	public PolygonImage process(int polyCount) {
 		JFrame frame = new JFrame();
 		JLabel compareImageLabel, bestPolygonImageLabel;
 		Thread thread;	
 		GeneticAlgThread runnableGenAlg;
+		int[] edgeImagePixels;
+		this.polyCount = polyCount;
 		
-		/* Create a canny edge detector object. */
-		CannyEdgeDetector detector = new CannyEdgeDetector();
-		// Adjust parameters.
-		detector.setLowThreshold(0.5f);
-		detector.setHighThreshold(8.0f);
-		detector.setGaussianKernelRadius(1.9f);
-		detector.setGaussianKernelWidth(40);		
-		
-		/* Load compare image. */
-		try {
-			image = ImageIO.read(this.getClass().getClassLoader().getResource(imagePath));
-		} catch (IOException e) {
-			System.out.println("Cannot find image file!");
-			System.exit(0);
-		}
+		if(USE_EDGE_DETECTION) {
+			/* Create a canny edge detector object. */
+			CannyEdgeDetector detector = new CannyEdgeDetector();
+			// Adjust parameters.
+			detector.setLowThreshold(0.5f);
+			detector.setHighThreshold(8.0f);
+			detector.setGaussianKernelRadius(1.9f);
+			detector.setGaussianKernelWidth(40);
 				
-		// Apply image to edge detector as a buffered image.
-		detector.setSourceImage(image);
-		detector.process();
- 		edgeCompareImage = detector.getEdgesImage();
+			// Apply image to edge detector as a buffered image.
+			detector.setSourceImage(image);
+			detector.process();
+	 		edgeCompareImage = detector.getEdgesImage();
+	 		
+	 		/* Convert edge image into pixel array. */
+			edgeCompareImage = getScaledImage(edgeCompareImage, new Point(edgeCompareImage.getWidth(), edgeCompareImage.getHeight()));	
+			edgeImagePixels = getCurrentImagePixels(edgeCompareImage);
+		}
 		
 		image = getScaledImage(image, new Point(image.getWidth(), image.getHeight()));	
 		int[] imagePixels = getCurrentImagePixels(image);
- 		
- 		/* Convert edge image into pixel array. */
-		edgeCompareImage = getScaledImage(edgeCompareImage, new Point(edgeCompareImage.getWidth(), edgeCompareImage.getHeight()));	
-		int[] edgeImagePixels = getCurrentImagePixels(edgeCompareImage);
 
 		Point startSize = new Point(image.getWidth(), image.getHeight()), currentSize;
 		
@@ -78,6 +80,8 @@ public class GeneticImage implements Constants {
 			maxBitShift++;
 		}
 		maxBitShift--;
+		// DEBUG
+//		maxBitShift = 0;
 				
 		currentSize = new Point(startSize.x >> maxBitShift, startSize.y >> maxBitShift);
 		compareImage = getScaledImage(imagePixels, startSize, currentSize);
@@ -126,8 +130,9 @@ public class GeneticImage implements Constants {
 			compareImage = getScaledImage(imagePixels, startSize,
 					new Point(startSize.x >> bitShift, startSize.y >> bitShift));
 			
-			edgeCompareImage = getScaledImage(edgeImagePixels, startSize,
-					new Point(startSize.x >> bitShift, startSize.y >> bitShift));
+			if(USE_EDGE_DETECTION)
+				edgeCompareImage = getScaledImage(edgeImagePixels, startSize,
+						new Point(startSize.x >> bitShift, startSize.y >> bitShift));
 			
 			geneticAlg = new GeneticAlgorithm(this);
 			/* Set population as current population. */
@@ -143,8 +148,8 @@ public class GeneticImage implements Constants {
 			thread = new Thread(runnableGenAlg); 
 			thread.start();
 					
-//			compareImageLabel = new JLabel(new ImageIcon(compareImage));
-			compareImageLabel = new JLabel(new ImageIcon(edgeCompareImage));
+			compareImageLabel = new JLabel(new ImageIcon(compareImage));
+//			compareImageLabel = new JLabel(new ImageIcon(edgeCompareImage));
 			bestPolygonImageLabel = new JLabel(new ImageIcon(currentBestImage.getImage()));
 			
 			frame.getContentPane().setLayout(new FlowLayout());
@@ -181,10 +186,7 @@ public class GeneticImage implements Constants {
 			if(currentBestImage != null)
 				System.out.println("Final fitness = " + currentBestImage.getFitness());
 		}
-	}
-	
-	public static void main(String[] args) {
-		new GeneticImage(IMAGE_PATH);
+		return currentBestImage;
 	}
 	
 	public static BufferedImage getScaledImage(BufferedImage image, Point size) {
@@ -215,8 +217,8 @@ public class GeneticImage implements Constants {
 	public int getPolyCount(byte bitShift) {
 		byte multiplier = (byte)((maxBitShift - bitShift) + 1);
 		multiplier = (multiplier < 1 ? 1 : multiplier);
-		int polyCount = (POLYGON_COUNT >> getPolyShift(maxBitShift)) * multiplier;
-		return (polyCount > POLYGON_COUNT ? POLYGON_COUNT : polyCount);
+		int polyCount = (this.polyCount >> getPolyShift(maxBitShift)) * multiplier;
+		return (polyCount > this.polyCount ? this.polyCount : polyCount);
 	}
 	
 	public BufferedImage getImage() {
@@ -252,30 +254,9 @@ public class GeneticImage implements Constants {
 	}
 	
 	public static int[] getCurrentImagePixels(BufferedImage image) {
-		return ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
-	}
-
-	private class GeneticAlgThread implements Runnable {
-		
-		PolygonImage[] threadPopulation;
-		GeneticAlgorithm genAlg;
-		
-		public GeneticAlgThread(GeneticAlgorithm genAlg) {
-			this.genAlg = genAlg;
-			this.threadPopulation = geneticAlg.getPopulation();
-		}
-		
-		@Override
-		public void run() {
-			threadPopulation = geneticAlg.process(threadPopulation);
-		}
-		
-		public PolygonImage getProcessingImage() {
-			return geneticAlg.getCurrentBestImage();
-		}
-		
-		public PolygonImage[] getPopulation() {
-			return threadPopulation;
-		}
+		if(image != null)
+			return ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+		else
+			return null;
 	}
 }

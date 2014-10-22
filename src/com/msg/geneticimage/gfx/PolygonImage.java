@@ -55,12 +55,16 @@ public class PolygonImage implements Comparable<PolygonImage> { // extends JComp
 			polygons.set(index, polygon);
 	}
 	
+	public Polygon[] getPolygons() {
+		Polygon[] polys = new Polygon[polygons.size()];
+		return polygons.toArray(polys);
+	}
+	
 	public int getNumberOfPolygons() {
 		return numberOfPolygons;
 	}
 
-	public BufferedImage paintImage() {
-		int w = geneticImage.getWidth(), h = geneticImage.getHeight();
+	public static BufferedImage paintImage(int w, int h, Polygon[] polygons, int shiftAmount) {
 		BufferedImage offImg = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
 //		BufferedImage offImg = new BufferedImage(w, h, BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics g2 = offImg.createGraphics();
@@ -69,23 +73,26 @@ public class PolygonImage implements Comparable<PolygonImage> { // extends JComp
 				
 		for (Polygon poly : polygons) {		
 			g2.setColor(poly.getColour());
-			g2.fillPolygon(scaleCoords(poly.getPolygonX()), 
-					scaleCoords(poly.getPolygonY()), poly.getVertexLength());
+			if(shiftAmount > 0)
+				g2.fillPolygon(scaleCoords(poly.getPolygonX(), shiftAmount), 
+						scaleCoords(poly.getPolygonY(), shiftAmount), poly.getVertexLength());
+			else
+				g2.fillPolygon(poly.getPolygonX(), poly.getPolygonY(), poly.getVertexLength());
 		}
 		g2.setColor(Color.LIGHT_GRAY);
 		g2.dispose();
 		return offImg;
 	}
 	
-	public int[] scaleCoords(int[] coordsArray) {
-		int shiftAmount = geneticImage.getBitShift();
+	public static int[] scaleCoords(int[] coordsArray, int shiftAmount) {
 		for (int i = 0; i < coordsArray.length; i++)
 			coordsArray[i] = coordsArray[i] >> shiftAmount;
 		return coordsArray;
 	}
  	
 	public BufferedImage getImage() {
-		return paintImage();
+		return paintImage(geneticImage.getWidth(), geneticImage.getHeight(), 
+				getPolygons(), geneticImage.getBitShift());
 	}
 	
 	public GeneticImage getGeneticImage() {
@@ -113,36 +120,38 @@ public class PolygonImage implements Comparable<PolygonImage> { // extends JComp
 		final int[] edgeComparePixels = GeneticImage.getCurrentImagePixels(geneticImage.getEdgeCompareImage());
 		long pixelFitness = 0;
 		int red, green, blue;
-		float edgeR, edgeG, edgeB;
+		float edgeR = 1.0f, edgeG = 1.0f, edgeB = 1.0f;
 		for (int pixel = 0; pixel < comparePixels.length; pixel += 4) {
 			/* Get compareImage pixel colours per channel. */
 			blue = (int)(comparePixels[pixel + 1] & 0xff); // blue
 			green = (int)((comparePixels[pixel + 2] >> 8) & 0xff); // green
 			red = (int)((comparePixels[pixel + 3] >> 16) & 0xff); // red
 			
-			/* Get edgeCompareImage pixel normalized values (0 - 1.0) per channel. */
-			edgeB = ((edgeComparePixels[pixel + 1] & 0xff) / 255); // blue
-			edgeG = (((edgeComparePixels[pixel + 2] >> 8) & 0xff) / 255); // green
-			edgeR = (((edgeComparePixels[pixel + 3] >> 16) & 0xff) / 255); // red
-			
-			/*
-			 * I want to use an edge pixel colour value to make high contrast areas
-			 * of the bitmap compare image more attractive to the algorithm. The
-			 * way I'm thinking of doing this is increasing the fitness score more in
-			 * the high contrast areas, thus luring the algorithm towards focusing
-			 * on those areas.
-			 * 
-			 * deltaP = original image pixel - generated image pixel
-			 * High Contrast (HC), Low Contrast (LC), Fitness (F)
-			 * F(HC) = deltaP * 1.0 = Normal fitness score
-			 * F(LC) = deltaP * 2.0 = High fitness score
-			 * edgeP = 0.0 (LC) - 1.0 (HC)
-			 * F = deltaP * (2.0 - edgeP) => high fitness when LC
-			 */
-			
-			edgeB = (1.5f - (edgeB * 0.5f));
-			edgeG = (1.5f - (edgeG * 0.5f));
-			edgeR = (1.5f - (edgeR * 0.5f));
+			if(edgeComparePixels != null) {
+				/* Get edgeCompareImage pixel normalized values (0 - 1.0) per channel. */
+				edgeB = ((edgeComparePixels[pixel + 1] & 0xff) / 255); // blue
+				edgeG = (((edgeComparePixels[pixel + 2] >> 8) & 0xff) / 255); // green
+				edgeR = (((edgeComparePixels[pixel + 3] >> 16) & 0xff) / 255); // red
+				
+				/*
+				 * I want to use an edge pixel colour value to make high contrast areas
+				 * of the bitmap compare image more attractive to the algorithm. The
+				 * way I'm thinking of doing this is increasing the fitness score more in
+				 * the high contrast areas, thus luring the algorithm towards focusing
+				 * on those areas.
+				 * 
+				 * deltaP = original image pixel - generated image pixel
+				 * High Contrast (HC), Low Contrast (LC), Fitness (F)
+				 * F(HC) = deltaP * 1.0 = Normal fitness score
+				 * F(LC) = deltaP * 2.0 = High fitness score
+				 * edgeP = 0.0 (LC) - 1.0 (HC)
+				 * F = deltaP * (2.0 - edgeP) => high fitness when LC
+				 */
+				
+				edgeB = (1.5f - (edgeB * 0.5f));
+				edgeG = (1.5f - (edgeG * 0.5f));
+				edgeR = (1.5f - (edgeR * 0.5f));
+			}
 			
 			/* Get delta per colour. */
 			pixelFitness += Math.abs((int)(imagePixels[pixel + 1] & 0xff) - blue) * edgeB;

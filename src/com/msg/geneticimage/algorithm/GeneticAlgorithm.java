@@ -216,8 +216,8 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> implements Const
 			else
 				stagnating = 0;
 			
-			/* Print every 200 generations. */
-			if(iterations % 100 == 0)
+			/* Print every PRINT_FREQUENCY generations. */
+			if(iterations % PRINT_FREQUENCY == 0)
 				nanoTimer.printElapsedTime(" Gen #: " + iterations + ". Stagnating: " + stagnating +
 						". Best fitness: " + currentBestImage.getFitness());
 		}

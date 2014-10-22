@@ -95,7 +95,6 @@ public class Polygon implements Gene, Constants {
 		Random random = new Random(System.nanoTime());		
 		float factor;
 		if(random.nextFloat() < CHANGE_VERTICES_RATIO) {
-			
 			/* Mutate position of origo. */
 			factor = random.nextFloat() * VERTICES_FUZZINESS_SCALE;
 			factor = ((1.0f - VERTICES_FUZZINESS_SCALE) - (-(VERTICES_FUZZINESS_SCALE / 2.0f) + factor));		
@@ -159,8 +158,13 @@ public class Polygon implements Gene, Constants {
 			theta = random.nextFloat() * ((float)Math.PI / 2.0f) + theta;
 			theta = theta > ((float)Math.PI * 2.0f) ? ((float)Math.PI * 2.0f) : theta;
 			/* Convert polar to euclidean space. */
-			x = (int)(radius * Math.cos(theta));
-			y = (int)(radius * Math.sin(theta));
+			float fuzziness = 1.0f;
+			if(random.nextFloat() < RANDOM_RADIUS_RATIO) {
+				fuzziness = random.nextFloat() * POLYGON_FUZZINESS_SCALE;
+				fuzziness = (0.5f - (-(POLYGON_FUZZINESS_SCALE / 2.0f) + fuzziness));
+			}
+			x = (int)(radius * fuzziness * Math.cos(theta));
+			y = (int)(radius * fuzziness * Math.sin(theta));
 			newVtx.setXY(new Point(x, y));
 			vertices.add(newVtx);
 		}
