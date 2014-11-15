@@ -1,12 +1,11 @@
 package com.msg.geneticimage.algorithm;
 
 import com.msg.geneticimage.gfx.PolygonImage;
-import com.msg.geneticimage.gfx.Polygon;
 
 public class RandomAlgorithm extends Algorithm<PolygonImage> {
 		
-	public RandomAlgorithm() {
-		// empty constructor
+	public RandomAlgorithm(int maxIterations) {
+		this.maxIterations = maxIterations;
 	}
 	
 	/**
@@ -18,15 +17,10 @@ public class RandomAlgorithm extends Algorithm<PolygonImage> {
 	 */
 	@Override
 	public PolygonImage process(PolygonImage polygonImage) {
-		PolygonImage randomPolygonImage = new PolygonImage(polygonImage.getGeneticImage(), maxIterations);
+		PolygonImage randomPolygonImage = 
+				new PolygonImage(polygonImage.getGeneticImage(), maxIterations);
 		
-		/* Create and add maxIterations number of polygons 
-		 * to PolygonImage object.
-		 */
-		for (int i = 0; i < maxIterations; i++) {		
-			/* Add the new polygon to list in PolygonImage. */
-			randomPolygonImage.addPolygon(new Polygon(polygonImage));
-		}
+		randomPolygonImage.generateRandom();
 
 		return randomPolygonImage;
 	}

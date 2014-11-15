@@ -1,10 +1,15 @@
 package com.msg.geneticimage.main;
 
+import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+
+
+
 //import java.io.IOException;
 //
 //import javax.imageio.ImageIO;
@@ -16,19 +21,29 @@ import com.msg.geneticimage.algorithm.Algorithm;
 import com.msg.geneticimage.algorithm.GeneticAlgorithm;
 import com.msg.geneticimage.algorithm.RandomAlgorithm;
 import com.msg.geneticimage.gfx.CannyEdgeDetector;
+import com.msg.geneticimage.gfx.ConnectComponent;
 import com.msg.geneticimage.gfx.PolygonImage;
-import com.msg.geneticimage.interfaces.Constants;
+import com.msg.geneticimage.interfaces.Cons;
 
-public class GeneticImage implements Constants {
+public class GeneticImage {
 	
 	private GeneticAlgorithm geneticAlg;
 	private BufferedImage image, compareImage, edgeCompareImage = null;
 	private byte bitShift, maxBitShift;
 	private int polyCount;
+	private PolygonImage[] population;
+	private Color bgColour = Color.BLACK;
 	
-	public GeneticImage(BufferedImage inputImg) {
-		
+	public GeneticImage(BufferedImage inputImg) {	
 		this.image = inputImg;
+		/* Max bit shift = -1 means no population. */
+		this.maxBitShift = -1;
+	}
+	
+	public GeneticImage(BufferedImage inputImg, byte maxBitShift, PolygonImage[] population) {	
+		this.image = inputImg;
+		this.maxBitShift = maxBitShift;
+		this.population = population;
 	}
 	
 	public PolygonImage process(int polyCount) {
@@ -39,29 +54,38 @@ public class GeneticImage implements Constants {
 		int[] edgeImagePixels;
 		this.polyCount = polyCount;
 		
-		if(USE_EDGE_DETECTION) {
-			/* Create a canny edge detector object. */
-			CannyEdgeDetector detector = new CannyEdgeDetector();
-			// Adjust parameters.
-			detector.setLowThreshold(0.5f);
-			detector.setHighThreshold(8.0f);
-			detector.setGaussianKernelRadius(1.9f);
-			detector.setGaussianKernelWidth(40);
-				
-			// Apply image to edge detector as a buffered image.
-			detector.setSourceImage(image);
-			detector.process();
-	 		edgeCompareImage = detector.getEdgesImage();
-	 		
-	 		/* Convert edge image into pixel array. */
-			edgeCompareImage = getScaledImage(edgeCompareImage, new Point(edgeCompareImage.getWidth(), edgeCompareImage.getHeight()));	
-			edgeImagePixels = getCurrentImagePixels(edgeCompareImage);
-		}
+//		if(Cons.USE_EDGE_DETECTION) {
+//			/* Create a canny edge detector object. */
+//			CannyEdgeDetector detector = new CannyEdgeDetector();
+//			// Adjust parameters.
+//			detector.setLowThreshold(0.5f);
+//			detector.setHighThreshold(8.0f);
+//			detector.setGaussianKernelRadius(1.9f);
+//			detector.setGaussianKernelWidth(40);
+//				
+//			// Apply image to edge detector as a buffered image.
+//			detector.setSourceImage(image);
+//			detector.process();
+//	 		edgeCompareImage = detector.getEdgesImage();
+//	 		
+//	 		/* Convert edge image into pixel array. */
+//			edgeCompareImage = getScaledImage(edgeCompareImage, new Point(edgeCompareImage.getWidth(), edgeCompareImage.getHeight()));	
+//			edgeImagePixels = getCurrentImagePixels(edgeCompareImage);
+//		}
 		
 		image = getScaledImage(image, new Point(image.getWidth(), image.getHeight()));	
 		int[] imagePixels = getCurrentImagePixels(image);
+		
+		if(Cons.USE_AVERAGE_BGCOLOUR)
+			bgColour = PolygonImage.getAverageColour(imagePixels);
+		
+		if(Cons.USE_EDGE_DETECTION) {
+			ConnectComponent connecter = new ConnectComponent();
+			edgeImagePixels = connecter.labeling(imagePixels, 
+					new Dimension(image.getWidth(), image.getHeight()), false);
+		}
 
-		Point startSize = new Point(image.getWidth(), image.getHeight()), currentSize;
+		Point startSize = new Point(image.getWidth(), image.getHeight());
 		
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setAlwaysOnTop(true);
@@ -70,56 +94,46 @@ public class GeneticImage implements Constants {
 		 * Running genetic algorithm first on the 1/32 scale image, then taking the result
 		 * into the next scaling level (1/16 and so on).
 		 */
-		
-		int imageArea = startSize.x * startSize.y, scaledArea = imageArea;
-		Point scaledSize = startSize;
-		maxBitShift = 1;
-		while (scaledArea > SHIFT_MIN_IMAGE_AREA) {
-			scaledSize = new Point(startSize.x >> maxBitShift, startSize.y >> maxBitShift);
-			scaledArea = scaledSize.x * scaledSize.y;
-			maxBitShift++;
-		}
-		maxBitShift--;
-		// DEBUG
-//		maxBitShift = 0;
+		/* If SHIFT_MIN_IMAGE_AREA = 0 then only process full scale image (no bit shifting). */
+		if(Cons.SHIFT_MIN_IMAGE_AREA > 0)
+			maxBitShift = calculateMaxBitShift(startSize, maxBitShift);
+		else
+			maxBitShift = 0;
 				
-		currentSize = new Point(startSize.x >> maxBitShift, startSize.y >> maxBitShift);
+		Point currentSize = new Point(startSize.x >> maxBitShift, startSize.y >> maxBitShift);
 		compareImage = getScaledImage(imagePixels, startSize, currentSize);
 		
 		/* 
 		 * Random algorithm phase. Create initial population randomly.
-		 */		
-		Algorithm<PolygonImage> randomAlg = new RandomAlgorithm();
-		PolygonImage[] population = new PolygonImage[POPULATION_SIZE];
-		PolygonImage polygonImage = new PolygonImage(this, getPolyCount(maxBitShift));
-		PolygonImage currentBestImage;
-		
-		/* Create images based on currentPolyCount number of random polygons. */
-		randomAlg.setMaxIterations(getPolyCount(maxBitShift));
-		
-		/* Create POPULATION_SIZE number of random PolygonImages as chromosomes. */
-		for (byte i = 0; i < population.length; i++) {
-			polygonImage = randomAlg.process(polygonImage);
-			polygonImage.calculateFitness();
-			population[i] = polygonImage;
+		 */
+		if(population == null) {
+			Algorithm<PolygonImage> randomAlg = new RandomAlgorithm(getPolyCount(maxBitShift));
+			population = new PolygonImage[Cons.POPULATION_SIZE];
+			PolygonImage polygonImage = new PolygonImage(this, getPolyCount(maxBitShift));
+			
+			/* Create POPULATION_SIZE number of random PolygonImages as chromosomes. */
+			for (byte i = 0; i < population.length; i++) {
+				polygonImage = randomAlg.process(polygonImage);
+				polygonImage.calculateFitness();
+				population[i] = polygonImage;
+			}
 		}
 		
-		currentBestImage = population[0];
+		PolygonImage currentBestImage = population[0];
 		
 		/*
 		 * Genetic algorithm multi-level phase of bitShift+1 number of levels.
 		 */
-		for (byte i = maxBitShift; i >= 0; i--) {
+		for (byte i = maxBitShift; i >= Cons.MINIMUM_IMAGE_BITSHIFT; i--) {
 			
 			/* Assign current bit shift amount to the bitShift variable. */
 			bitShift = i;
-//			bitShift = 1;
 
 			/* Adjust all polygon images in population for twice as many polygons. */
 			if(population[0].getNumberOfPolygons() < (getPolyCount(bitShift)))
-				for (PolygonImage polyImg : population) {
-					polyImg.setNewPolyCount(getPolyCount(bitShift));
-					polyImg.calculateFitness();
+				for (PolygonImage polyImage : population) {
+					polyImage.setNewPolyCount(getPolyCount(bitShift));
+					polyImage.calculateFitness();
 				}
 			
 			// DEBUG
@@ -130,8 +144,8 @@ public class GeneticImage implements Constants {
 			compareImage = getScaledImage(imagePixels, startSize,
 					new Point(startSize.x >> bitShift, startSize.y >> bitShift));
 			
-			if(USE_EDGE_DETECTION)
-				edgeCompareImage = getScaledImage(edgeImagePixels, startSize,
+			if(Cons.USE_EDGE_DETECTION)
+				edgeCompareImage = getScaledEdgeImage(edgeImagePixels, startSize,
 						new Point(startSize.x >> bitShift, startSize.y >> bitShift));
 			
 			geneticAlg = new GeneticAlgorithm(this);
@@ -163,13 +177,13 @@ public class GeneticImage implements Constants {
 			while (thread.getState() != Thread.State.TERMINATED) {
 				/* Check current best image by fitness every CHECK_FREQUENCY seconds. */
 				try { 
-					Thread.sleep(CHECK_FREQUENCY);
+					Thread.sleep(Cons.CHECK_FREQUENCY);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 				population = runnableGenAlg.getPopulation();
 				frame.getContentPane().remove(bestPolygonImageLabel);
-				currentBestImage = runnableGenAlg.getProcessingImage();
+				currentBestImage = runnableGenAlg.getBestImage();
 				bestPolygonImageLabel = new JLabel(new ImageIcon(currentBestImage.getImage()));
 				frame.getContentPane().add(bestPolygonImageLabel);
 				frame.setTitle("Best: " + currentBestImage.getFitness());
@@ -187,6 +201,28 @@ public class GeneticImage implements Constants {
 				System.out.println("Final fitness = " + currentBestImage.getFitness());
 		}
 		return currentBestImage;
+	}
+	
+	/**
+	 * 
+	 * @param startSize
+	 * @param maxBitShift
+	 * @return maxBitShift
+	 */
+	public byte calculateMaxBitShift(Point startSize, byte maxBitShift) {
+		byte shift = maxBitShift;
+		if(shift < 0) {
+			int imageArea = startSize.x * startSize.y, scaledArea = imageArea;
+			Point scaledSize = startSize;
+			shift = 1;
+			while (scaledArea > Cons.SHIFT_MIN_IMAGE_AREA) {
+				scaledSize = new Point(startSize.x >> shift, startSize.y >> shift);
+				scaledArea = scaledSize.x * scaledSize.y;
+				shift++;
+			}
+			shift--;
+		}
+		return shift;
 	}
 	
 	public static BufferedImage getScaledImage(BufferedImage image, Point size) {
@@ -209,8 +245,21 @@ public class GeneticImage implements Constants {
 	   return currentImage;
 	}
 	
+	public static BufferedImage getScaledEdgeImage(int[] imagePixels, Point oldSize, Point size) {
+	   BufferedImage image = new BufferedImage(oldSize.x, oldSize.y, BufferedImage.TYPE_INT_RGB);
+	   BufferedImage currentImage = new BufferedImage(size.x, size.y, BufferedImage.TYPE_INT_RGB);
+	   int[] imgData = ((DataBufferInt)image.getRaster().getDataBuffer()).getData();
+	   System.arraycopy(imagePixels, 0, imgData, 0, imagePixels.length);
+	   Graphics g = currentImage.createGraphics();
+	   g.drawImage(image, 0, 0, size.x, size.y, null);
+	   g.dispose();
+	   return currentImage;
+	}
+	
 	public byte getPolyShift(byte bitShift) {
-		byte shift = (byte)(bitShift - SUBTRACT_FROM_BITSHIFT);
+		byte shift = 0;
+		if(Cons.POLYGON_BITSHIFT > 0)
+			shift = (byte)((bitShift / maxBitShift) * Cons.POLYGON_BITSHIFT);
 		return (shift < 0 ? 0 : shift);
 	}
 	
@@ -223,6 +272,10 @@ public class GeneticImage implements Constants {
 	
 	public BufferedImage getImage() {
 		return image;
+	}
+	
+	public void setImage(BufferedImage image) {
+		this.image = image;
 	}
 	
 	public BufferedImage getCompareImage() {
@@ -258,5 +311,9 @@ public class GeneticImage implements Constants {
 			return ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 		else
 			return null;
+	}
+
+	public Color getBgColour() {
+		return bgColour ;
 	}
 }

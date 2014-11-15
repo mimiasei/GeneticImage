@@ -12,11 +12,12 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 
+import com.msg.geneticimage.algorithm.RandomAlgorithm;
 import com.msg.geneticimage.gfx.Polygon;
 import com.msg.geneticimage.gfx.PolygonImage;
-import com.msg.geneticimage.interfaces.Constants;
+import com.msg.geneticimage.interfaces.Cons;
 
-public class Main implements Constants {
+public class Main {
 	
 	private BufferedImage image;
 	
@@ -24,13 +25,13 @@ public class Main implements Constants {
 				
 		/* Load compare image. */
 		try {
-			image = ImageIO.read(this.getClass().getClassLoader().getResource(IMAGE_PATH));
+			image = ImageIO.read(this.getClass().getClassLoader().getResource(Cons.IMAGE_PATH));
 		} catch (IOException e) {
 			System.out.println("Cannot find image file!");
 			System.exit(0);
 		}
-		
-		byte chunksCount = 8;
+				
+		byte chunksCount = 1;
 		
 		/* Start a thread of GeneticImage for each image chunk. */
 		ArrayList<GenAlgThread> threadsList = new ArrayList<GenAlgThread>();
@@ -38,12 +39,12 @@ public class Main implements Constants {
 		Thread thread;
 		
 		for (byte i = 0; i < chunksCount; i++) {
-			GenAlgThread genAlgThread = new GenAlgThread(chunksCount, i);
+			GenAlgThread genAlgThread = new GenAlgThread(image, chunksCount, i, (byte)-1, null);
 			threadsList.add(genAlgThread);
 			thread = new Thread(genAlgThread);
 			thread.start();
 		}
-		
+
 		/* Loop until all chunks are done. */
 		boolean notDone = true;
 		while (notDone) {
@@ -52,13 +53,36 @@ public class Main implements Constants {
 				polyImages[i] = threadsList.get(i).getPolyImage();
 				if(polyImages[i] == null)
 					notDone = true;
+				else
+					polyImages[i].setName("Chunk#" + i);
 			}
 		}
 		
-		/* Put together all chunks and display resulting image. */
+		/* Put together all chunks and add to new population of otherwise random polyImages. */	
+		PolygonImage[] population = new PolygonImage[Cons.POPULATION_SIZE];
+		population[0] = assemblePolyImage(
+				polyImages, image.getWidth(), image.getHeight(), chunksCount);
+		RandomAlgorithm randomAlg = new RandomAlgorithm(population[0].getNumberOfPolygons());
+		for (int i = 1; i < population.length; i++)
+			population[i] = randomAlg.process(population[0]);
+		
+		/* Start new thread for algorithm on complete polyImage. */
+		GenAlgThread genAlgThread = new GenAlgThread(image, 1, 1, (byte)0, population);
+		thread = new Thread(genAlgThread);
+		thread.start();
+		
+		/* Loop until image is done. */
+		PolygonImage finalPolyImage = null;
+		while (thread.getState() != Thread.State.TERMINATED)
+			finalPolyImage = genAlgThread.getPolyImage();
+		
+		finalPolyImage.setName("Final image");
+
+		/* Display final constructed image. */
+		PolygonImage[] finalPolyImageArray = {finalPolyImage};
 		JLabel compareImageLabel = new JLabel(new ImageIcon(image));
 		JLabel bestPolygonImageLabel = new JLabel(new ImageIcon(
-				constructImage(polyImages, image.getWidth(), image.getHeight(), chunksCount)));
+				constructImage(finalPolyImageArray, image.getWidth(), image.getHeight(), 1)));
 		JFrame frame = new JFrame();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setAlwaysOnTop(true);
@@ -70,7 +94,35 @@ public class Main implements Constants {
 		frame.setVisible(true);
 	}
 	
-	public BufferedImage constructImage(PolygonImage[] polyImages, int w, int h, int chunksCount) {
+	/** 
+	 * Construct a BufferedImage of w * h dimension out of chunksCount number of PolygonImage parts (chunks).
+	 * 
+	 * @param polyImages
+	 * @param w
+	 * @param h
+	 * @param chunksCount
+	 * @return BufferedImage
+	 */
+	public static BufferedImage constructImage(PolygonImage[] polyImages, int w, int h, int chunksCount) {
+		PolygonImage polyImage;
+		if(polyImages.length > 1)
+			polyImage = assemblePolyImage(polyImages, w, h, chunksCount);
+		else
+			polyImage = polyImages[0];
+		return PolygonImage.paintImage(w, h, polyImage.getPolygons(), 0);
+	}
+	
+	/**
+	 * Assemble a PolygonImage of w * h dimension out of chunksCount PolygonImage parts (chunks).
+	 * 
+	 * @param polyImages
+	 * @param w
+	 * @param h
+	 * @param chunksCount
+	 * @return assembledPolyImage
+	 */
+	public static PolygonImage assemblePolyImage(PolygonImage[] polyImages, int w, int h, int chunksCount) {
+		PolygonImage assembledPolyImage = null;
 		int rows = getRows(chunksCount);
 		int columns = getColumns(chunksCount, rows);
 		int chunkW = w / columns;
@@ -81,12 +133,14 @@ public class Main implements Constants {
 			for (Polygon poly : polyImages[i].getPolygons()) {
 				xPos = poly.getOrigo().x + getColumn(i, columns) * chunkW;
 				yPos = poly.getOrigo().y + getRow(i, columns) * chunkH;
+//				System.out.println(polyImages[i] + ". w: " + chunkW + ". h: " + chunkH + ". origo.x: " + poly.getOrigo().x + ". origo.y: " + poly.getOrigo().y +
+//						". xPos = " + xPos + ". yPos = " + yPos);
 				poly.setOrigo(new Point(xPos, yPos));
 				polygons.add(poly);
 			}
-		Polygon[] polys = new Polygon[polygons.size()];
-		BufferedImage finalImage = PolygonImage.paintImage(w, h, polygons.toArray(polys), 0);
-		return finalImage;
+		assembledPolyImage = new PolygonImage(polyImages[0]);
+		assembledPolyImage.setPolygons(polygons);
+		return assembledPolyImage;
 	}
 	
 	private BufferedImage getImageChunk(BufferedImage image, int chunksCount, int chunkNbr) {
@@ -156,23 +210,62 @@ public class Main implements Constants {
 		new Main();
 	}
 	
+	/**
+	 * Converts an object of given type to an array.
+	 * 
+	 * @param object
+	 * @return array of the object
+	 */
+	public static <T> T[] convertToArray(T object) {
+		ArrayList<T> list = new ArrayList<T>();
+		list.add(object);
+		@SuppressWarnings("unchecked")
+		T[] array = (T[]) java.lang.reflect.Array.newInstance(object.getClass(), 1);
+		return list.toArray(array);
+	}
+	
 	class GenAlgThread implements Runnable {
 		
 		private int count, nbr;
 		private PolygonImage polyImage;
+		private BufferedImage completeImage;
+		private byte maxBitShift;
+		PolygonImage[] population = null;
 		
-		public GenAlgThread(int count, int nbr) {
+		/**
+		 * MaxBitShift -1 = no population (for starting algorithm from scratch).
+		 * For this, use convertToArray(object) as population parameter.
+		 * 
+		 * @param completeImage
+		 * @param count
+		 * @param nbr
+		 * @param maxBitShift
+		 * @param population
+		 */
+		public GenAlgThread(BufferedImage completeImage, 
+				int count, int nbr, byte maxBitShift, PolygonImage[] population) {
 			this.polyImage = null;
 			this.count = count;
 			this.nbr = nbr;
+			this.completeImage = completeImage;
+			this.maxBitShift = maxBitShift;
+			this.population = population;
 		}
 
 		@Override
 		public void run() {
-			BufferedImage chunk = getImageChunk(image, count, nbr);
+			int polyCount = Cons.POLYGON_COUNT >> Cons.POLYCOUNT_INITIATE_SHIFT;
+			BufferedImage chunk = this.completeImage;
+			if(count > 1)
+				chunk = getImageChunk(this.completeImage, count, nbr);
 			if(chunk != null)
 				/* Round poly count upwards. */
-				polyImage = new GeneticImage(chunk).process((int)Math.round(POLYGON_COUNT/(double)count));
+				if(maxBitShift < 0)
+					polyImage = new GeneticImage(chunk).process(
+							(int)Math.round(polyCount/(double)count));
+				else
+					polyImage = new GeneticImage(chunk, maxBitShift, population).process(
+							(int)Math.round(polyCount/(double)count));
 		}
 		
 		public PolygonImage getPolyImage() {

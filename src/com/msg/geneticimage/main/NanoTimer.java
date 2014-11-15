@@ -16,20 +16,14 @@ public class NanoTimer {
 		elapsedNanoTime = System.nanoTime() - startNanoTime;
 	}
 	
-	public long getElapsedTime() {
-		return elapsedNanoTime;
-	}
-	
-	public void printElapsedTime() {
-		System.out.println(this);
-	}
-	
-	public void printElapsedTime(String addOn) {
-		System.out.println(this + addOn);
+	public String getElapsedTime() {
+		return String.valueOf((double)Math.round(((System.nanoTime() - startNanoTime) / 
+				60000000000.0) * 1000) / 1000) + " mins";
 	}
 	
 	@Override
 	public String toString() {
-		return "Elapsed time: " + elapsedNanoTime / 1000000000.0 + " seconds.";
+		return String.valueOf((double)Math.round((elapsedNanoTime / 
+				1000000000.0) * 1000) / 1000) + " seconds";
 	}
 }

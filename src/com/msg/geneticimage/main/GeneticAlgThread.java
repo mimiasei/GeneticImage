@@ -19,6 +19,10 @@ public class GeneticAlgThread implements Runnable {
 	}
 	
 	public PolygonImage getProcessingImage() {
+		return genAlg.getCurrentImage();
+	}
+	
+	public PolygonImage getBestImage() {
 		return genAlg.getCurrentBestImage();
 	}
 	
