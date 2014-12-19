@@ -1,11 +1,7 @@
 package com.msg.geneticimage.gfx;
 
 import java.awt.Color;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Shape;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.util.ArrayList;
@@ -20,7 +16,7 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	private ArrayList<Polygon> polygons = new ArrayList<Polygon>();
 	private GeneticImage geneticImage;
 	private long fitness = Long.MAX_VALUE;
-	private int numberOfPolygons;
+	private int numberOfPolygons, age;
 	private String name;
 	
 	/**
@@ -32,6 +28,7 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		this.geneticImage = geneticImage;
 		this.numberOfPolygons = numberOfPolygons;
 		this.name = "PolygonImage";
+		resetAge();
 	}
 	
 	public PolygonImage(PolygonImage clone) {
@@ -41,6 +38,7 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		this.polygons.clear();
 		this.polygons.addAll(clone.polygons);
 		this.name = clone.name;
+		this.age = clone.age;
 	}
 	
 	public void addPolygon(Polygon polygon) {
@@ -92,35 +90,11 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		g2.fillRect(0, 0, w, h);			
 		for (Polygon poly : polygons) {		
 			g2.setColor(poly.getColour());
-			if(Cons.USE_SPLINE_POLYGONS) {
-				g2.rotate(poly.getTheta());
-				Shape rect;
-				if(shiftAmount > 0) {
-					rect = new RoundRectangle2D.Double((double)Math.max((int)poly.getRadius()>>shiftAmount, 1),
-							(double)Math.max((int)poly.getHeight()>>shiftAmount, 1),
-							(double)Math.max(poly.getOrigo().x>>shiftAmount, 1), 
-							(double)Math.max(poly.getOrigo().y>>shiftAmount, 1),
-							(double)Math.max((int)poly.getRadius()>>shiftAmount, 1), 
-							(double)Math.max((int)poly.getHeight()>>shiftAmount, 1));
-//					g2.fillOval(Math.max(poly.getOrigo().x>>shiftAmount, 1), 
-//								Math.max(poly.getOrigo().y>>shiftAmount, 1),
-//								Math.max((int)poly.getRadius()>>shiftAmount, 1), 
-//								Math.max((int)poly.getHeight()>>shiftAmount, 1));
-				} else
-					rect = new RoundRectangle2D.Double(poly.getRadius(),
-							poly.getHeight(),
-							(double)poly.getOrigo().x, 
-							(double)poly.getOrigo().y,
-							poly.getRadius(), 
-							poly.getHeight());
-			    g2.fill(rect);
-			    g2.draw(rect);
-			} else
-				if(shiftAmount > 0)
-					g2.fillPolygon(scaleCoords(poly.getPolygonX(), shiftAmount), 
-							scaleCoords(poly.getPolygonY(), shiftAmount), poly.getVertexLength());
-				else
-					g2.fillPolygon(poly.getPolygonX(), poly.getPolygonY(), poly.getVertexLength());
+			if(shiftAmount > 0)
+				g2.fillPolygon(scaleCoords(poly.getPolygonX(), shiftAmount), 
+						scaleCoords(poly.getPolygonY(), shiftAmount), poly.getVertexLength());
+			else
+				g2.fillPolygon(poly.getPolygonX(), poly.getPolygonY(), poly.getVertexLength());
 		}
 		g2.dispose();
 		return offImg;
@@ -152,8 +126,25 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	public void setName(String name) {
 		this.name = name;
 	}
+	
+	public int getAge() {
+		return age;
+	}
+
+	public void resetAge() {
+		this.age = 0;
+	}
+	
+	public void incrAge() {
+		age++;
+	}
+	
+	public int agedFitness() {
+		return age * age;
+	}
 
 	public long getFitness() {
+		incrAge();
 		return fitness;
 	}
 
@@ -171,7 +162,8 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		long pixelFitness = 0;
 		int red, green, blue;
 		float edgeR = 1.0f, edgeG = 1.0f, edgeB = 1.0f;
-		for (int pixel = 0; pixel < comparePixels.length; pixel += 4) {
+		int step = Cons.FITNESS_PIXEL_STEP << 2; // <<2 = *4
+		for (int pixel = 0; pixel < comparePixels.length; pixel += step) {
 			/* Get compareImage pixel colours per channel. */
 			blue = (int)(comparePixels[pixel + 1] & 0xff); // blue
 			green = (int)((comparePixels[pixel + 2] >> 8) & 0xff); // green
@@ -208,11 +200,8 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 			int dG = (int) ((((imagePixels[pixel + 2] >> 8) & 0xff) - green) * edgeG);
 			int dR = (int) ((((imagePixels[pixel + 3] >> 16) & 0xff) - red) * edgeR);
 			int penalty = (polygons.size() > Cons.POLYGON_COUNT) ? polygons.size() - Cons.POLYGON_COUNT : 0;
-			penalty *= penalty << 2;
-//			if(polygons.size() > Cons.POLYGON_COUNT)
-//				System.out.println("count: " + (polygons.size() - Cons.POLYGON_COUNT) + 
-//						". penalty: " + penalty);
-			pixelFitness += dR * dR + dG * dG + dB * dB + penalty;
+			penalty <<= 1;
+			pixelFitness += ((Math.abs(dR) + Math.abs(dG) + Math.abs(dB)) * (step >> 2)) + penalty;
 		}
 		return pixelFitness;
 	}
@@ -230,8 +219,7 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	}
 	
 	/**
-	 * Injects random number of new polygons between given min and max values.
-	 * 
+	 * Injects random number of new polygons between given min and max values. 
 	 * @param min
 	 * @param max
 	 */
@@ -240,6 +228,31 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		int polyCount = random.nextInt(max - min) + min;
 		for (int i = 0; i < polyCount; i++)
 			this.addPolygon(new Polygon(this));
+	}
+	
+	/**
+	 * Swap two random polygon positions in the list.
+	 */
+	public void swapRandom() {
+		Random random = new Random(System.nanoTime());
+		int pos1 = random.nextInt(polygons.size());
+		int pos2 = random.nextInt(polygons.size());
+		Polygon temp = polygons.get(pos1);
+		polygons.set(pos1, polygons.get(pos2));
+		polygons.set(pos2, temp);
+	}
+	
+	/**
+	 * Mutate number of polygons.
+	 */
+	public void mutatePolyCount() {
+		Random random = new Random(System.nanoTime());
+		if(random.nextDouble() < Cons.CHANGE_POLYCOUNT_RATIO)
+			if(random.nextBoolean())
+				addPolygon(new Polygon(this));
+			else
+				if(polygons.size() > (Cons.POLYGON_COUNT >> Cons.POLYCOUNT_INITIATE_SHIFT))
+					removePolygon(random.nextInt(polygons.size()));
 	}
 	
 	@Override
@@ -256,22 +269,8 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 
 	@Override
 	public void mutate() {
-		Random random = new Random(System.nanoTime());
-		
-		/* Swap two random polygon positions in the list. */
-//		int pos1 = random.nextInt(polygons.size());
-//		int pos2 = random.nextInt(polygons.size());
-//		Polygon temp = polygons.get(pos1);
-//		polygons.set(pos1, polygons.get(pos2));
-//		polygons.set(pos2, temp);
-		
-		/* Mutate number of polygons. */
-		if(random.nextDouble() < Cons.CHANGE_POLYCOUNT_RATIO)
-			if(random.nextBoolean())
-				addPolygon(new Polygon(this));
-			else
-				if(polygons.size() > (Cons.POLYGON_COUNT >> Cons.POLYCOUNT_INITIATE_SHIFT))
-					removePolygon(random.nextInt(polygons.size()));
+		for (Polygon poly : polygons)
+			poly.mutate();
 	}
 
 	@Override

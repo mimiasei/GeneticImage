@@ -133,13 +133,8 @@ public class Polygon implements Gene {
 		 */
 		if(random.nextDouble() < Cons.RANDOM_SCALE_RATIO) {
 			factor = getFuzziness(Cons.POLYGON_FUZZINESS_SCALE);
-			
-			if(Cons.USE_SPLINE_POLYGONS) {
-				radius *= factor;
-				height *= getFuzziness(Cons.POLYGON_FUZZINESS_SCALE);
-			} else
-				for (Vertex v : vertices)
-					v.setXY(mutatePosition(v.getCoords(), factor));	
+			for (Vertex v : vertices)
+				v.setXY(mutatePosition(v.getCoords(), factor));	
 		}
 		
 		/* Mutate position of origo. */
@@ -152,14 +147,17 @@ public class Polygon implements Gene {
 		
 		/* Change colour of polugon if passing CHANGE_COLOUR_RATIO test. */
 		if(random.nextDouble() < Cons.CHANGE_COLOUR_RATIO)
-			this.colour = new Colour();
+			if(random.nextDouble() < Cons.RANDOM_NEW_RATIO)
+				colour = new Colour();
+			else
+				colour.mutate();
 		
 		/* If passing test, randomly add or remove a random vertex. */
-		if(!Cons.USE_SPLINE_POLYGONS && random.nextDouble() < Cons.CHANGE_VERTICES_COUNT_RATIO)
+		if(random.nextDouble() < Cons.CHANGE_VERTICES_COUNT_RATIO)
 			mutateVerticesCount();
 		
 		/* Mutate position of vertices if passing MUTATION_RATIO test. */
-		if(!Cons.USE_SPLINE_POLYGONS && random.nextDouble() < Cons.CHANGE_VERTICES_RATIO) {
+		if(random.nextDouble() < Cons.CHANGE_VERTICES_RATIO) {
 			for (Vertex v : vertices)
 				v.setXY(mutatePosition(v.getCoords(), 0));			
 		}
@@ -210,13 +208,10 @@ public class Polygon implements Gene {
 		double addTheta = random.nextDouble() * factor;
 		addTheta *= (random.nextBoolean() ? 1.0 : -1.0);
 		double theta;
-		if(Cons.USE_SPLINE_POLYGONS)
-			polygon.theta += addTheta;
-		else
-			for (Vertex v : polygon.vertices) {
-				theta = convertPointToTheta(v.getXY()) + addTheta;
-				v.setXY(convertThetaToPoint(theta, polygon.origo.distance(v.getXY())));
-			}
+		for (Vertex v : polygon.vertices) {
+			theta = convertPointToTheta(v.getXY()) + addTheta;
+			v.setXY(convertThetaToPoint(theta, polygon.origo.distance(v.getXY())));
+		}
 		return polygon;
 	}
 	
@@ -254,7 +249,7 @@ public class Polygon implements Gene {
 	 */
 	public double getRandomRadius(int w, int h) {	
 		/* Make initial radius 1/4 of width times fuzziness. */
-		double radius = (w >> 2) * getFuzziness(Cons.POLYGON_FUZZINESS_SCALE);
+		double radius = (w >> 1) * getFuzziness(Cons.POLYGON_FUZZINESS_SCALE);
 		/* Make initial radius the diagonal divided by polyCount times PI. */
 //		double radius = (double)(Math.sqrt((w * h) / 
 //				(polyImage.getNumberOfPolygons() * Math.PI))) * getFuzziness(POLYGON_FUZZINESS_SCALE);

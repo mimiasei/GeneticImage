@@ -4,7 +4,7 @@ import com.msg.geneticimage.algorithm.GeneticAlgorithm;
 import com.msg.geneticimage.gfx.PolygonImage;
 
 public class GeneticAlgThread implements Runnable {
-			
+	
 	PolygonImage[] threadPopulation;
 	GeneticAlgorithm genAlg;
 	

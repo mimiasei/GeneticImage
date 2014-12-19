@@ -24,17 +24,15 @@ public class Colour implements Gene {
 
 	@Override
 	public void mutate() {
+		// TODO: change this to subtly adjust hue, saturation, brightness and opacity.
 		Random random = new Random(System.nanoTime());
 		int[] rgbaCh = new int[4];
-		if (Cons.MUTATION_RATIO > 0.0f)
-			if(random.nextFloat() < Cons.MUTATION_RATIO) {
-				for (int ch = 0; ch < 3; ch++)
-					rgbaCh[ch] = (int)((rgba.getRGB() & (0x000000FF << ch)) * random.nextFloat());
-				/* Alpha value. */
-				rgbaCh[3] = (int)((rgba.getRGB() & 0xFF) * 
-						Math.min(random.nextFloat() + Cons.MIN_ALPHA, Cons.MAX_ALPHA));
-				rgba = new Color(rgbaCh[0], rgbaCh[1], rgbaCh[2], rgbaCh[3]);
-			}
+		rgbaCh[0] = Math.max(0, Math.min(255, (int)(rgba.getRed() * (0.9 + random.nextFloat()*0.2))));
+		rgbaCh[1] = Math.max(0, Math.min(255, (int)(rgba.getGreen() * (0.9 + random.nextFloat()*0.2))));
+		rgbaCh[2] = Math.max(0, Math.min(255, (int)(rgba.getBlue() * (0.9 + random.nextFloat()*0.2))));
+		/* Alpha value. */
+		rgbaCh[3] = Math.max(0, Math.min(255, (int)(rgba.getAlpha() * (0.9 + random.nextFloat()*0.2))));
+		rgba = new Color(rgbaCh[0], rgbaCh[1], rgbaCh[2], rgbaCh[3]);
 	}
 	
 	@Override

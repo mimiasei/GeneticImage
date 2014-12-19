@@ -31,7 +31,7 @@ public class Main {
 			System.exit(0);
 		}
 				
-		byte chunksCount = 1;
+		byte chunksCount = Cons.IMAGE_CHUNKS;
 		
 		/* Start a thread of GeneticImage for each image chunk. */
 		ArrayList<GenAlgThread> threadsList = new ArrayList<GenAlgThread>();
@@ -42,9 +42,10 @@ public class Main {
 			GenAlgThread genAlgThread = new GenAlgThread(image, chunksCount, i, (byte)-1, null);
 			threadsList.add(genAlgThread);
 			thread = new Thread(genAlgThread);
+			System.out.println("starting thread...");
 			thread.start();
 		}
-
+		
 		/* Loop until all chunks are done. */
 		boolean notDone = true;
 		while (notDone) {
@@ -58,23 +59,29 @@ public class Main {
 			}
 		}
 		
-		/* Put together all chunks and add to new population of otherwise random polyImages. */	
-		PolygonImage[] population = new PolygonImage[Cons.POPULATION_SIZE];
-		population[0] = assemblePolyImage(
-				polyImages, image.getWidth(), image.getHeight(), chunksCount);
-		RandomAlgorithm randomAlg = new RandomAlgorithm(population[0].getNumberOfPolygons());
-		for (int i = 1; i < population.length; i++)
-			population[i] = randomAlg.process(population[0]);
-		
-		/* Start new thread for algorithm on complete polyImage. */
-		GenAlgThread genAlgThread = new GenAlgThread(image, 1, 1, (byte)0, population);
-		thread = new Thread(genAlgThread);
-		thread.start();
-		
-		/* Loop until image is done. */
 		PolygonImage finalPolyImage = null;
-		while (thread.getState() != Thread.State.TERMINATED)
-			finalPolyImage = genAlgThread.getPolyImage();
+		
+		/* Put together all chunks and add to new population of otherwise random polyImages. */	
+		if(Cons.IMAGE_CHUNKS > 1) {	
+			PolygonImage[] population = new PolygonImage[Cons.POPULATION_SIZE];
+			population[0] = assemblePolyImage(
+					polyImages, image.getWidth(), image.getHeight(), chunksCount);
+			RandomAlgorithm randomAlg = new RandomAlgorithm(population[0].getNumberOfPolygons());
+			for (int i = 1; i < population.length; i++)
+				population[i] = randomAlg.process(population[0]);
+			
+			/* Start new thread for algorithm on complete polyImage. */
+			GenAlgThread genAlgThread = new GenAlgThread(image, 1, 1, (byte)0, population);
+			thread = new Thread(genAlgThread);
+			thread.start();
+			
+			/* Loop until image is done. */	
+			while (thread.getState() != Thread.State.TERMINATED)
+				finalPolyImage = genAlgThread.getPolyImage();
+			
+		} else {
+			finalPolyImage = polyImages[0];
+		}
 		
 		finalPolyImage.setName("Final image");
 
