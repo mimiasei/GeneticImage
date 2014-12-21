@@ -201,7 +201,7 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 			int dR = (int) ((((imagePixels[pixel + 3] >> 16) & 0xff) - red) * edgeR);
 			int penalty = (polygons.size() > Cons.POLYGON_COUNT) ? polygons.size() - Cons.POLYGON_COUNT : 0;
 			penalty <<= 1;
-			pixelFitness += ((Math.abs(dR) + Math.abs(dG) + Math.abs(dB)) * (step >> 2)) + penalty;
+			pixelFitness += (dB * dB + dG * dG + dR * dR) * (step >> 2) + penalty;
 		}
 		return pixelFitness;
 	}

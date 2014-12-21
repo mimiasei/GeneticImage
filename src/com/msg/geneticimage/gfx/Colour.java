@@ -24,15 +24,16 @@ public class Colour implements Gene {
 
 	@Override
 	public void mutate() {
-		// TODO: change this to subtly adjust hue, saturation, brightness and opacity.
 		Random random = new Random(System.nanoTime());
+		double mut = Cons.COLOUR_FUZZINESS_SCALE * 2.0;
+		double init = 1.0 - mut;
 		int[] rgbaCh = new int[4];
-		rgbaCh[0] = Math.max(0, Math.min(255, (int)(rgba.getRed() * (0.9 + random.nextFloat()*0.2))));
-		rgbaCh[1] = Math.max(0, Math.min(255, (int)(rgba.getGreen() * (0.9 + random.nextFloat()*0.2))));
-		rgbaCh[2] = Math.max(0, Math.min(255, (int)(rgba.getBlue() * (0.9 + random.nextFloat()*0.2))));
+		rgbaCh[0] = Math.max(0, Math.min(255, (int)(rgba.getRed() * (init + random.nextFloat()*mut))));
+		rgbaCh[1] = Math.max(0, Math.min(255, (int)(rgba.getGreen() * (init + random.nextFloat()*mut))));
+		rgbaCh[2] = Math.max(0, Math.min(255, (int)(rgba.getBlue() * (init + random.nextFloat()*mut))));
 		/* Alpha value. */
-		rgbaCh[3] = Math.max(0, Math.min(255, (int)(rgba.getAlpha() * (0.9 + random.nextFloat()*0.2))));
-		rgba = new Color(rgbaCh[0], rgbaCh[1], rgbaCh[2], rgbaCh[3]);
+//		rgbaCh[3] = Math.max(0, Math.min(255, (int)(rgba.getAlpha() * (init + random.nextFloat()*mut))));
+		rgba = new Color(rgbaCh[0], rgbaCh[1], rgbaCh[2], rgba.getAlpha());
 	}
 	
 	@Override
