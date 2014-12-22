@@ -21,6 +21,14 @@ public class Colour implements Gene {
 	public Colour(Colour clone) {
 		this.rgba = clone.rgba;
 	}
+	
+	public Color getRGBA() {
+		return rgba;
+	}
+
+	public void setRGBA(Color colour) {
+		this.rgba = colour;
+	}
 
 	@Override
 	public void mutate() {
@@ -45,13 +53,5 @@ public class Colour implements Gene {
 		rgba = new Color(random.nextInt(255),random.nextInt(255), 
 				random.nextInt(255), alpha);
 
-	}
-
-	public Color getRGBA() {
-		return rgba;
-	}
-
-	public void setRGBA(Color colour) {
-		this.rgba = colour;
 	}
 }

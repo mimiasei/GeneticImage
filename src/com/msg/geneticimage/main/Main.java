@@ -2,12 +2,9 @@ package com.msg.geneticimage.main;
 
 import java.awt.FlowLayout;
 import java.awt.Graphics2D;
-import java.awt.Point;
+//import java.awt.Point;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.ArrayList;
-
-import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -23,14 +20,8 @@ public class Main {
 	
 	public Main() {
 				
-		/* Load compare image. */
-		try {
-			image = ImageIO.read(this.getClass().getClassLoader().getResource(Cons.IMAGE_PATH));
-		} catch (IOException e) {
-			System.out.println("Cannot find image file!");
-			System.exit(0);
-		}
-				
+		image = Tools.image;
+						
 		byte chunksCount = Cons.IMAGE_CHUNKS;
 		
 		/* Start a thread of GeneticImage for each image chunk. */
@@ -138,11 +129,9 @@ public class Main {
 		ArrayList<Polygon> polygons = new ArrayList<Polygon>();
 		for (int i = 0; i < polyImages.length; i++)
 			for (Polygon poly : polyImages[i].getPolygons()) {
-				xPos = poly.getOrigo().x + getColumn(i, columns) * chunkW;
-				yPos = poly.getOrigo().y + getRow(i, columns) * chunkH;
-//				System.out.println(polyImages[i] + ". w: " + chunkW + ". h: " + chunkH + ". origo.x: " + poly.getOrigo().x + ". origo.y: " + poly.getOrigo().y +
-//						". xPos = " + xPos + ". yPos = " + yPos);
-				poly.setOrigo(new Point(xPos, yPos));
+				xPos = getColumn(i, columns) * chunkW;
+				yPos = getRow(i, columns) * chunkH;
+				poly.move(xPos, yPos);
 				polygons.add(poly);
 			}
 		assembledPolyImage = new PolygonImage(polyImages[0]);

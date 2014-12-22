@@ -280,7 +280,7 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		 */
 		for (int i = 0; i < numberOfPolygons; i++)		
 			/* Add the new polygon to list in PolygonImage. */
-			addPolygon(new Polygon(this, Cons.USE_SPLINE_POLYGONS));		
+			addPolygon(new Polygon(this));		
 	}
 }
 

@@ -7,15 +7,14 @@ import java.util.Random;
 
 import com.msg.geneticimage.interfaces.Cons;
 import com.msg.geneticimage.interfaces.Gene;
+import com.msg.geneticimage.main.Tools;
 
 public class Polygon implements Gene {
 	
 	private ArrayList<Vertex> vertices;
 	private Colour colour;
-	private PolygonImage polyImage;
 	
 	public Polygon(PolygonImage polyImage) {
-		this.polyImage = polyImage;
 		vertices = new ArrayList<Vertex>();
 		/* Generate random colour. */
 		colour = new Colour();
@@ -28,7 +27,6 @@ public class Polygon implements Gene {
 		for (Vertex v : clone.vertices)
 			this.vertices.add(new Vertex(v));
 		this.colour = new Colour(clone.colour);
-		this.polyImage = new PolygonImage(clone.polyImage);
 	}
 	
 	private int[] getPolygonC(boolean isX) {
@@ -44,6 +42,30 @@ public class Polygon implements Gene {
 	
 	public int[] getPolygonY() {
 		return getPolygonC(false);
+	}
+	
+	/**
+	 * Returns the mean of the coords of all the vertices.
+	 * @return origo
+	 */
+	public Point getOrigo() {
+		int meanX = 0, meanY = 0;
+		if(vertices != null && getVertexLength() > 0) {
+			for (Vertex v : vertices) {
+				meanX += v.x;
+				meanY += v.y;
+			}
+			meanX /= getVertexLength();
+			meanY /= getVertexLength();
+		}
+		return new Point(meanX, meanY);
+	}
+	
+	public void move(int mx, int my) {
+		for (Vertex v : vertices) {
+			v.x += mx;
+			v.y += my;
+		}
 	}
 	
 	public int getVertexLength() {
@@ -62,52 +84,36 @@ public class Polygon implements Gene {
 		this.colour = new Colour(colour);
 	}
 
-	public PolygonImage getPolyImage() {
-		return polyImage;
-	}
-
-	public void setPolyImage(PolygonImage polyImage) {
-		this.polyImage = polyImage;
-	}
-
 	@Override
 	public void mutate() {
-		Random random = new Random(System.nanoTime());		
-		double factor;
-		
 		/* Change colour of polugon if passing CHANGE_COLOUR_RATIO test. */
-		if(random.nextDouble() < Cons.CHANGE_COLOUR_RATIO)
-			if(random.nextDouble() < Cons.RANDOM_NEW_RATIO)
+		if(Tools.mutatable(Cons.CHANGE_COLOUR_RATIO))
+			if(Tools.mutatable(Cons.RANDOM_NEW_RATIO))
 				colour = new Colour();
 			else
 				colour.mutate();
 		
 		/* If passing test, randomly add or remove a random vertex. */
-		if(random.nextDouble() < Cons.CHANGE_VERTICES_COUNT_RATIO)
+		if(Tools.mutatable(Cons.CHANGE_VERTICES_COUNT_RATIO))
 			mutateVerticesCount();
 		
-		/* Mutate position of vertices if passing MUTATION_RATIO test. */
-		if(random.nextDouble() < Cons.CHANGE_VERTICES_RATIO) {
-			for (Vertex v : vertices)
+		/* Mutate position of vertices. */
+		for (Vertex v : vertices)
 				v.setXY(mutatePosition(v.getCoords(), 0));			
-		}
 	}
 
 	@Override
 	public void generateRandom() {
-		Random random = new Random(System.nanoTime());
-		int w = polyImage.getGeneticImage().getImage().getWidth();
-		int h = polyImage.getGeneticImage().getImage().getHeight();
-		radius = getRandomRadius(w, h);	
-		origo = new Point(random.nextInt(w), random.nextInt(h));
-		if(splineBased) {
-			height = getRandomRadius(h, w);
-			/* Get random theta from 0 to 2*PI. */
-			theta = getRandomTheta(0) * 4.0; 
-		} else {
-			byte numberOfVertices = (byte)(random.nextInt(Cons.POLYGON_VERTICES) + 3);
-			convertPolarToEuclidean(numberOfVertices, radius);
-		}
+		byte vertsCount = (byte)(Tools.rndInt(3, Cons.POLYGON_VERTICES + 3));
+		Vertex origo = new Vertex();
+		int xRate = Tools.maxPolyWidth >> 1;
+		int yRate = Tools.maxPolyHeight >> 1;
+		for (int i = 0; i < vertsCount; i++) {
+			Point newPnt = new Point();
+			newPnt.x = Math.min(Tools.imgWidth, Math.max(0, origo.x + Tools.rndInt(-xRate, xRate)));
+			newPnt.y = Math.min(Tools.imgHeight, Math.max(0, origo.y + Tools.rndInt(-yRate, yRate)));
+			vertices.add(new Vertex(newPnt));
+		}		
 	}
 	
 	/**
@@ -133,17 +139,19 @@ public class Polygon implements Gene {
 	public void mutateVerticesCount() {
 		Random random = new Random(System.nanoTime());
 		int vtxPos = random.nextInt(vertices.size() - 1);
+		/* Either add vertex... */
 		if(random.nextBoolean()) {
-			int x1 = vertices.get(vtxPos).getXY().x;
-			int x2 = vertices.get(vtxPos + 1).getXY().x;
-			int y1 = vertices.get(vtxPos).getXY().y;
-			int y2 = vertices.get(vtxPos + 1).getXY().y;
+			int x1 = vertices.get(vtxPos).x;
+			int x2 = vertices.get(vtxPos + 1).x;
+			int y1 = vertices.get(vtxPos).y;
+			int y2 = vertices.get(vtxPos + 1).y;
 			/* Make new point in the middle between vtxPos and the next pos. */
 			Point point = new Point(x1 + ((x2 - x1) >> 1), y1 + ((y2 - y1) >> 1));
-			Vertex vertex = new Vertex(this);
+			Vertex vertex = new Vertex();
 			vertex.setXY(point);		
 			vertices.add(vtxPos, vertex);
 		} else
+			/* ...or remove vertex. */
 			if(vertices.size() > 3)
 				vertices.remove(vtxPos);
 	}

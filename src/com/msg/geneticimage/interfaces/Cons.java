@@ -5,9 +5,9 @@ public interface Cons {
  // Main class:
  
  /* Input image path. */
- static final String IMAGE_PATH = "images/monalisahead128px.png";
+// static final String IMAGE_PATH = "images/monalisahead128px.png";
 // static final String IMAGE_PATH = "images/Lena128px.png";
-// static final String IMAGE_PATH = "images/ask128px.png";
+ static final String IMAGE_PATH = "images/ask128px.png";
 // static final String IMAGE_PATH = "images/spiritedAway_bathroomHouse.jpg";
 // static final String IMAGE_PATH = "images/miriamOgAsk_brygga.jpg";
 // static final String IMAGE_PATH = "images/islandVillage.jpg";
@@ -29,9 +29,9 @@ public interface Cons {
  /* Number of stagnations causing new blood injection, replacing worse half of population. */
  static final int NUMBER_OF_STAGNATIONS = 1000;
  /* Percentage of previous best fitness that current best has to be better than, or stagnation increments. */
- static final double MIN_FITNESS_DIFF_RATIO = 0.003;
+ static final double MIN_FITNESS_DIFF_RATIO = 0.005;
  /* Minimum area of down shifted image for calculating maxShift. 0 = Full size. */
- static final int SHIFT_MIN_IMAGE_AREA = 2000;
+ static final int SHIFT_MIN_IMAGE_AREA = 6000000;
  /* Number of chunks for splitting image into parallel processes. */
  static final byte IMAGE_CHUNKS = 1;
  /* Minimum image bit shift, sets maximum size of image compared original size. 0 = original size. */
@@ -64,13 +64,13 @@ public interface Cons {
      }
  }
  /* Percent chance of entering cross-over stage. */
- static final double CROSSOVER_RATIO = 0.6;
+ static final double CROSSOVER_RATIO = 0.8;
  /* Percent chance of entering mutation stage. */
  static final double MUTATION_RATIO = 0.1;
  /* Max percentage of POLYGON_COUNT mutations per child. */
  static final double MAX_MUTATIONS = 0.015;
  /* Population size of chromosomes. */
- static final int POPULATION_SIZE = 24; // must be even number
+ static final int POPULATION_SIZE = 2; // must be even number
  
  // Colour class:
  
@@ -85,31 +85,27 @@ public interface Cons {
  /* Set to true for using spline based polygons (ellipses). */
  static final boolean USE_SPLINE_POLYGONS = false;
  /* Random max number of polygon vertices, plus 3 (= minimum). */
- static final int POLYGON_VERTICES = 3;
+ static final int POLYGON_VERTICES = 0;
  
  // Scale factors:
- /* Factor for how much smaller length and height of polygons should be compared to image. */
- static final double POLYGON_FUZZINESS_SCALE = 0.8; // Max must be < 1.0
  /* Factor for max percent fuzziness set to vertices or polygons when mutating. */
- static final double VERTICES_FUZZINESS_SCALE = 0.05;
+ static final double POLYGON_FUZZINESS_SCALE = 0.8;
+ /* Factor for max percent fuzziness set to vertices or polygons when mutating. */
+ static final double VERTICES_FUZZINESS_SCALE = 0.1;
  /* Factor for max percent fuzziness set to colour channels when mutating. */
  static final double COLOUR_FUZZINESS_SCALE = 0.05;
  
  // Percent chance ratios:
  /* Percent chance of replacing an object by a new random one. */
- static final double RANDOM_NEW_RATIO = 0.00;
- /* Percent chance of random fuzziness to polygon origo position. */
- static final double RANDOM_ORIGO_RATIO = 0.0;
- /* Percent chance of random fuzziness to polygon radius. */
- static final double RANDOM_RADIUS_RATIO = 0.0;
- /* Percent chance of random fuzziness to polygon scale. */
- static final double RANDOM_SCALE_RATIO = 0.0;
+ static final double RANDOM_NEW_RATIO = 0.1;
+ /* Percent chance of adjusting max position of polygon vertices. */
+ static final double CHANGE_VERTICES_MAX_RATIO = 0.1;
  /* Percent chance of adjusting position of polygon vertices. */
- static final double CHANGE_VERTICES_RATIO = 0.99;
+ static final double CHANGE_VERTICES_RATIO = 0.75;
  /* Percent chance of changing number of polygon vertices. */
- static final double CHANGE_VERTICES_COUNT_RATIO = 0.0;
+ static final double CHANGE_VERTICES_COUNT_RATIO = 0.3;
  /* Percent chance of changing colour of polygon. */
- static final double CHANGE_COLOUR_RATIO = 0.99;
+ static final double CHANGE_COLOUR_RATIO = 0.5;
  /* Percent chance of adding or removing a polygon. */
- static final double CHANGE_POLYCOUNT_RATIO = 0.0;
+ static final double CHANGE_POLYCOUNT_RATIO = 0.1;
 }

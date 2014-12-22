@@ -12,6 +12,7 @@ import com.msg.geneticimage.interfaces.Cons;
 import com.msg.geneticimage.main.GeneticImage;
 import com.msg.geneticimage.main.NanoTimer;
 import com.msg.geneticimage.main.FileHandler;
+import com.msg.geneticimage.main.Tools;
 
 public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	
@@ -53,7 +54,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 		/* Create PolygonImage list from population array parameter. */
 		Collections.addAll(population, inputPopulation);		
 		boolean[] usedPopulation = new boolean[Cons.POPULATION_SIZE << 1];
-		int iterations = 0, bonusPolys = 0;
+		int iterations = 0;
 		long startFitness;
 		Random random = new Random(System.nanoTime());
 		Cons.ParentChoice parentChoice;
@@ -155,7 +156,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 				int polyCount = Math.min(children[0].getNumberOfPolygons(), children[1].getNumberOfPolygons());
 
 				/* Do two-point cross-over if ratio permits it. */
-				if(random.nextFloat() < Cons.CROSSOVER_RATIO) {
+				if(Tools.mutatable(Cons.CROSSOVER_RATIO)) {
 					int pos1 = random.nextInt(polyCount);
 					int pos2 = Math.min((random.nextInt(Math.max(polyCount>>1, 1)) + pos1), polyCount);
 					for (int b = pos1; b < pos2; b++) {
@@ -171,7 +172,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 				 * Random number of mutations per child up to MAX_MUTATIONS percentage
 				 * of POLYGON_COUNT. */
 				Polygon polygon;
-				if(random.nextFloat() < getMutationRatio()) {
+				if(Tools.mutatable(getMutationRatio())) {
 					for (byte c = 0; c < 2; c++) {
 						int nbr = (int)((random.nextFloat() * Cons.MAX_MUTATIONS) * polyCount) + 1;
 						for (int n = 0; n < nbr; n++) {
@@ -233,7 +234,6 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 			else {
 				stagnating = 0;
 				mutationRatio = Cons.MUTATION_RATIO;
-				bonusPolys--;
 			}
 			
 			/* If stagnating NUMBER_OF_STAGNATIONS times, inject new blood. */
