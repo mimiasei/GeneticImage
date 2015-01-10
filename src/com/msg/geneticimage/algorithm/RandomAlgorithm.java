@@ -18,8 +18,7 @@ public class RandomAlgorithm extends Algorithm<PolygonImage> {
 	@Override
 	public PolygonImage process(PolygonImage polygonImage) {
 		PolygonImage randomPolygonImage = 
-				new PolygonImage(polygonImage.getGeneticImage(), maxIterations);
-		
+				new PolygonImage(polygonImage.getGeneticImage(), maxIterations);	
 		randomPolygonImage.generateRandom();
 
 		return randomPolygonImage;

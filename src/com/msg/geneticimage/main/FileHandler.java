@@ -1,9 +1,7 @@
 package com.msg.geneticimage.main;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -14,19 +12,21 @@ import com.msg.geneticimage.gfx.PolygonImage;
 public class FileHandler {
 	
 	private PrintWriter plot;
+	private long startFitness;
 	
 	/**
 	 * Opens text file for saving data.
 	 * @param polyImage
 	 */
 	public FileHandler(PolygonImage polyImage) {
+		startFitness = polyImage.getFitness();
 		String date = new SimpleDateFormat("MM_dd_hhmm").format(new Date());
 		try {  // Catch errors in I/O if necessary.
 			plot = new PrintWriter(new File(
 					FileHandler.class.getClassLoader().getResource("").getPath() + 
-								polyImage.getNumberOfPolygons() + "n_" + 
+								polyImage.getPolyCount() + "n_" + 
 								date + ".plt"));
-			plot.println("# x:Generation   Y1:Best fitness   Y2:Worst fitness");
+			plot.println("# x:Generation   Y1:Best fitness percent   Y2:Worst fitness percent");
 		} catch(IOException exc) {
 			exc.printStackTrace(); // If there was an error, print the info.
 		}
@@ -42,8 +42,10 @@ public class FileHandler {
 	public void saveData(ArrayList<PolygonImage> population, int gen) {
 		PolygonImage bestG = population.get(0);
 		PolygonImage worstG = population.get(population.size()-1);
+		double bestP = Tools.nDecimals(1.0 - (bestG.getFitness() / (double)startFitness), 5);
+		double worstP = Tools.nDecimals(1.0 - (worstG.getFitness() / (double)startFitness), 5);
 		/* Save this population's current best and worst polyImage's fitness. */
-		plot.println(gen + " " + bestG.getFitness() + " " + worstG.getFitness());
+		plot.println(gen + " " + bestP + " " + worstP);
 	}
 	
 	/**

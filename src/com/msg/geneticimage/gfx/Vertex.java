@@ -9,49 +9,54 @@ import com.msg.geneticimage.main.Tools;
 public class Vertex implements Gene {
 	
 	public int x = 0, y = 0;
+	public int w = Tools.imgWidth, h = Tools.imgHeight;
 	
-	public Vertex() {
+	public Vertex(int w, int h) {
+		this.w = w;
+		this.h = h;
 		generateRandom();
-	}
-	
-	public Vertex(Point coords) {
-		this.x = coords.x;
-		this.y = coords.y;
 	}
 	
 	public Vertex(Vertex clone) {
 		this.x = clone.x;
 		this.y = clone.y;
-	}
-	
-	public void setXY(Point coords) {
-		this.x = coords.x;
-		this.y = coords.y;
+		this.w = clone.w;
+		this.h = clone.h;
 	}
 	
 	public Point getCoords() {
 		return new Point(x, y);
 	}
+	
+	public void setWidth(int w) {
+		this.w = w;
+	}
+	
+	public void setHeight(int h) {
+		this.h = h;
+	}
 
 	@Override
-	public void mutate() {
-		if(Tools.mutatable(Cons.CHANGE_VERTICES_MAX_RATIO)) {
-			x = Tools.rndInt(0, Tools.imgWidth);
-			y = Tools.rndInt(0, Tools.imgHeight);
-		}
-		
+	public void mutate() {	
 		if(Tools.mutatable(Cons.CHANGE_VERTICES_RATIO)) {
-			int xRate = (int)(Tools.imgWidth * Cons.VERTICES_FUZZINESS_SCALE);
-			int yRate = (int)(Tools.imgWidth * Cons.VERTICES_FUZZINESS_SCALE);
-			x += Tools.rndInt(-xRate, xRate);
-			y += Tools.rndInt(-yRate, yRate);
+			x += Tools.gaussianInt(w, Cons.VERTICES_FUZZINESS_SCALE);
+			y += Tools.gaussianInt(h, Cons.VERTICES_FUZZINESS_SCALE);
+//			x += (Tools.rndInt(0, (int)(w * Cons.VERTICES_FUZZINESS_SCALE)) * 
+//					(Tools.rndBool() ? 1 : -1));
+//			y += (Tools.rndInt(0, (int)(h * Cons.VERTICES_FUZZINESS_SCALE)) *
+//					(Tools.rndBool() ? 1 : -1));
 		}
 	}
 
 	@Override
 	public void generateRandom() {
-		x = Tools.rndInt(0, Tools.imgWidth);
-		y = Tools.rndInt(0, Tools.imgHeight);
+		x = Tools.randomInt(0, w-1);
+		y = Tools.randomInt(0, h-1);
+	}
+	
+	@Override
+	public String toString() {
+		return (x + ", " + y);
 	}
 
 }

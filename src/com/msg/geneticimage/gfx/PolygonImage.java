@@ -1,15 +1,14 @@
 package com.msg.geneticimage.gfx;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
+//import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
 import java.util.ArrayList;
-import java.util.Random;
 
 import com.msg.geneticimage.interfaces.Cons;
 import com.msg.geneticimage.interfaces.Gene;
+import com.msg.geneticimage.main.FitnessCalc;
 import com.msg.geneticimage.main.GeneticImage;
+import com.msg.geneticimage.main.Tools;
 
 public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends JComponent
 	
@@ -18,6 +17,7 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	private long fitness = Long.MAX_VALUE;
 	private int numberOfPolygons, age;
 	private String name;
+	private boolean isDirty;
 	
 	/**
 	 * 
@@ -29,6 +29,7 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		this.numberOfPolygons = numberOfPolygons;
 		this.name = "PolygonImage";
 		resetAge();
+		isDirty = false;
 	}
 	
 	public PolygonImage(PolygonImage clone) {
@@ -40,9 +41,25 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		this.name = clone.name;
 		this.age = clone.age;
 	}
+ 	
+	public BufferedImage getImage() {
+		return Renderer.paintImage(geneticImage.getCompareImage().getWidth(), geneticImage.getCompareImage().getHeight(), 
+				getPolygons(), geneticImage.getBitShift(), geneticImage.getBgColour());
+	}
+	
+	public GeneticImage getGeneticImage() {
+		return geneticImage;
+	}
+
+	public void setGeneticImage(GeneticImage geneticImage) {
+		this.geneticImage = geneticImage;
+	}
 	
 	public void addPolygon(Polygon polygon) {
-		polygons.add(polygon);
+		if(polygons.size() < Cons.POLYGON_COUNT + 
+			Tools.rndInt(0, (Cons.POLYGON_COUNT >> Cons.POLYCOUNT_INITIATE_SHIFT))) {
+			polygons.add(polygon);
+		}
 	}
 	
 	public void removePolygon(int index) {	
@@ -53,7 +70,8 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		int addPolyCount = polyCount - polygons.size();
 		if(addPolyCount > 0) {
 			for (int i = 0; i < addPolyCount; i++)
-				polygons.add(new Polygon(this));
+				addPolygon(new Polygon(geneticImage.getCompareImage().getWidth(), 
+						geneticImage.getCompareImage().getHeight()));
 			numberOfPolygons = polygons.size();
 		}
 	}
@@ -78,49 +96,8 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		numberOfPolygons = polygons.size();
 	}
 	
-	public int getNumberOfPolygons() {
+	public int getPolyCount() {
 		return polygons.size();
-	}
-
-	public static BufferedImage paintImage(int w, int h, Polygon[] polygons, int shiftAmount, Color bgColour) {
-		BufferedImage offImg = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g2 = (Graphics2D)offImg.createGraphics();
-//		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		g2.setColor(bgColour);
-		g2.fillRect(0, 0, w, h);			
-		for (Polygon poly : polygons) {		
-			g2.setColor(poly.getColour());
-			if(shiftAmount > 0)
-				g2.fillPolygon(scaleCoords(poly.getPolygonX(), shiftAmount), 
-						scaleCoords(poly.getPolygonY(), shiftAmount), poly.getVertexLength());
-			else
-				g2.fillPolygon(poly.getPolygonX(), poly.getPolygonY(), poly.getVertexLength());
-		}
-		g2.dispose();
-		return offImg;
-	}
-	
-	public static BufferedImage paintImage(int w, int h, Polygon[] polygons, int shiftAmount) {
-		return paintImage(w, h, polygons, shiftAmount, Color.BLACK);
-	}
-	
-	public static int[] scaleCoords(int[] coordsArray, int shiftAmount) {
-		for (int i = 0; i < coordsArray.length; i++)
-			coordsArray[i] = coordsArray[i] >> shiftAmount;
-		return coordsArray;
-	}
- 	
-	public BufferedImage getImage() {
-		return paintImage(geneticImage.getWidth(), geneticImage.getHeight(), 
-				getPolygons(), geneticImage.getBitShift(), geneticImage.getBgColour());
-	}
-	
-	public GeneticImage getGeneticImage() {
-		return geneticImage;
-	}
-
-	public void setGeneticImage(GeneticImage geneticImage) {
-		this.geneticImage = geneticImage;
 	}
 	
 	public void setName(String name) {
@@ -130,21 +107,33 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	public int getAge() {
 		return age;
 	}
+	
+	public boolean isZeroAge() {
+		return (age == 0);
+	}
+	
+	public void setZeroAge() {
+		age = 0;
+	}
 
 	public void resetAge() {
-		this.age = 0;
+		this.age = Tools.rndInt(1, Cons.CHROMOSOME_MAX_STARTING_AGE);
 	}
 	
-	public void incrAge() {
-		age++;
+	public void decrAge() {
+		if(age > 0)
+			age--;
 	}
-	
-	public int agedFitness() {
-		return age * age;
+
+	public boolean isDirty() {
+		return isDirty;
+	}
+
+	public void setDirty(boolean isDirty) {
+		this.isDirty = isDirty;
 	}
 
 	public long getFitness() {
-		incrAge();
 		return fitness;
 	}
 
@@ -153,69 +142,8 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	}
 	
 	public void calculateFitness() {
-		fitness = getFitness(geneticImage.getCurrentImagePixels(), this.getImage());
-	}
-	
-	public long getFitness(int[] imagePixels, BufferedImage compareImage) {
-		final int[] comparePixels = ((DataBufferInt) compareImage.getRaster().getDataBuffer()).getData();
-		final int[] edgeComparePixels = GeneticImage.getCurrentImagePixels(geneticImage.getEdgeCompareImage());
-		long pixelFitness = 0;
-		int red, green, blue;
-		float edgeR = 1.0f, edgeG = 1.0f, edgeB = 1.0f;
-		int step = Cons.FITNESS_PIXEL_STEP << 2; // <<2 = *4
-		for (int pixel = 0; pixel < comparePixels.length; pixel += step) {
-			/* Get compareImage pixel colours per channel. */
-			blue = (int)(comparePixels[pixel + 1] & 0xff); // blue
-			green = (int)((comparePixels[pixel + 2] >> 8) & 0xff); // green
-			red = (int)((comparePixels[pixel + 3] >> 16) & 0xff); // red
-			
-			if(edgeComparePixels != null) {
-				/* Get edgeCompareImage pixel normalized values (0 - 1.0) per channel. */
-				edgeB = ((edgeComparePixels[pixel + 1] & 0xff) / 0xff); // blue
-				edgeG = (((edgeComparePixels[pixel + 2] >> 8) & 0xff) / 0xff); // green
-				edgeR = (((edgeComparePixels[pixel + 3] >> 16) & 0xff) / 0xff); // red
-				
-				/*
-				 * I want to use an edge pixel colour value to make high contrast areas
-				 * of the bitmap compare image more attractive to the algorithm. The
-				 * way I'm thinking of doing this is increasing the fitness score more in
-				 * the high contrast areas, thus luring the algorithm towards focusing
-				 * on those areas.
-				 * 
-				 * deltaP = original image pixel - generated image pixel
-				 * High Contrast (HC), Low Contrast (LC), Fitness (F)
-				 * F(HC) = deltaP * 1.0 = Normal fitness score
-				 * F(LC) = deltaP * 2.0 = High fitness score
-				 * edgeP = 0.0 (LC) - 1.0 (HC)
-				 * F = deltaP * (2.0 - edgeP) => high fitness when LC
-				 */
-				
-				edgeB = (1.5f - (edgeB * 0.5f));
-				edgeG = (1.5f - (edgeG * 0.5f));
-				edgeR = (1.5f - (edgeR * 0.5f));
-			}
-			
-			/* Get delta per colour. */
-			int dB = (int) (((imagePixels[pixel + 1] & 0xff) - blue) * edgeB);
-			int dG = (int) ((((imagePixels[pixel + 2] >> 8) & 0xff) - green) * edgeG);
-			int dR = (int) ((((imagePixels[pixel + 3] >> 16) & 0xff) - red) * edgeR);
-			int penalty = (polygons.size() > Cons.POLYGON_COUNT) ? polygons.size() - Cons.POLYGON_COUNT : 0;
-			penalty <<= 1;
-			pixelFitness += (dB * dB + dG * dG + dR * dR) * (step >> 2) + penalty;
-		}
-		return pixelFitness;
-	}
-	
-	public static Color getAverageColour(int[] imagePixels) {
-		int red = 0, green = 0, blue = 0, counter = 0;
-		for (int pixel = 0; pixel < imagePixels.length; pixel += 4) {
-			/* Get compareImage pixel colours per channel. */
-			blue += (int)(imagePixels[pixel + 1] & 0xff); // blue
-			green += (int)((imagePixels[pixel + 2] >> 8) & 0xff); // green
-			red += (int)((imagePixels[pixel + 3] >> 16) & 0xff); // red	
-			counter++;			
-		}
-		return new Color(red / counter, green / counter, blue / counter);
+		fitness = FitnessCalc.getFitness(geneticImage.getCurrentImagePixels(), 
+				Renderer.getPixelsArray(this.getImage()));
 	}
 	
 	/**
@@ -224,19 +152,18 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	 * @param max
 	 */
 	public void bloodInjection(int min, int max) {
-		Random random = new Random(System.nanoTime());		
-		int polyCount = random.nextInt(max - min) + min;
+		int polyCount = Tools.rndInt(min, max);
 		for (int i = 0; i < polyCount; i++)
-			this.addPolygon(new Polygon(this));
+			this.addPolygon(new Polygon(geneticImage.getCompareImage().getWidth(), 
+					geneticImage.getCompareImage().getHeight()));
 	}
 	
 	/**
 	 * Swap two random polygon positions in the list.
 	 */
 	public void swapRandom() {
-		Random random = new Random(System.nanoTime());
-		int pos1 = random.nextInt(polygons.size());
-		int pos2 = random.nextInt(polygons.size());
+		int pos1 = Tools.rndInt(0, polygons.size()-1);
+		int pos2 = Tools.rndInt(0, polygons.size()-1);
 		Polygon temp = polygons.get(pos1);
 		polygons.set(pos1, polygons.get(pos2));
 		polygons.set(pos2, temp);
@@ -246,13 +173,32 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	 * Mutate number of polygons.
 	 */
 	public void mutatePolyCount() {
-		Random random = new Random(System.nanoTime());
-		if(random.nextDouble() < Cons.CHANGE_POLYCOUNT_RATIO)
-			if(random.nextBoolean())
-				addPolygon(new Polygon(this));
-			else
-				if(polygons.size() > (Cons.POLYGON_COUNT >> Cons.POLYCOUNT_INITIATE_SHIFT))
-					removePolygon(random.nextInt(polygons.size()));
+		if(Tools.mutatable(Cons.REMOVE_POLY_RATIO)) {
+			if(polygons.size() > 2)
+				removePolygon(Tools.rndInt(0, polygons.size()-1));
+		} else {
+			addPolygon(new Polygon(geneticImage.getCompareImage().getWidth(), 
+					geneticImage.getCompareImage().getHeight()));
+		}
+	}
+
+	@Override
+	public void mutate() {
+		for (Polygon poly : polygons)
+			poly.mutate();
+	}
+
+	@Override
+	public void generateRandom() {
+		/* Create and add numberOfPolygons number of polygons 
+		 * to PolygonImage object. */
+		polygons.clear();
+		for (int i = 0; i < numberOfPolygons; i++) {
+			Polygon polygon = new Polygon(geneticImage.getCompareImage().getWidth(), 
+					geneticImage.getCompareImage().getHeight());
+			/* Add the new polygon to list in PolygonImage. */
+			addPolygon(polygon);
+		}
 	}
 	
 	@Override
@@ -265,22 +211,6 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	@Override
 	public String toString() {
 		return name;
-	}
-
-	@Override
-	public void mutate() {
-		for (Polygon poly : polygons)
-			poly.mutate();
-	}
-
-	@Override
-	public void generateRandom() {
-		/* Create and add numberOfPolygons number of polygons 
-		 * to PolygonImage object.
-		 */
-		for (int i = 0; i < numberOfPolygons; i++)		
-			/* Add the new polygon to list in PolygonImage. */
-			addPolygon(new Polygon(this));		
 	}
 }
 

@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 //import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -12,6 +13,7 @@ import javax.swing.JLabel;
 import com.msg.geneticimage.algorithm.RandomAlgorithm;
 import com.msg.geneticimage.gfx.Polygon;
 import com.msg.geneticimage.gfx.PolygonImage;
+import com.msg.geneticimage.gfx.Renderer;
 import com.msg.geneticimage.interfaces.Cons;
 
 public class Main {
@@ -23,6 +25,39 @@ public class Main {
 		image = Tools.image;
 						
 		byte chunksCount = Cons.IMAGE_CHUNKS;
+		
+//		 DEBUG
+//		int test = 0;
+//		int len = 10000;
+//		int min = Integer.MAX_VALUE;
+//		int max = Integer.MIN_VALUE;
+//		int pos = 0;
+//		int neg = 0;
+//		int zero = 0;
+////		double ratio = 0.01;
+////		double normDist = 100.0;
+//		int res;
+//		for (int i = 0; i < len; i++) {
+////			res = (int)(Tools.gaussian(ratio, normDist) * (image.getWidth() * Cons.VERTICES_FUZZINESS_SCALE));
+////			double temp = res / (normDist * Cons.VERTICES_FUZZINESS_SCALE * 100);
+////			temp = ((Math.abs(temp) > 0.1 && Math.abs(temp) <= 1.0) ? (Math.signum(temp) * 1.0) : temp);
+//			res = Tools.gaussianInt(image.getWidth(), Cons.VERTICES_FUZZINESS_SCALE);
+////			res = (int)temp;
+//			test += res;
+//			if(res > max) max = res;
+//			if(res < min) min = res;
+//			
+//			if(res < 0) neg++;
+//			else if(res > 0) pos++;
+//			else zero++;
+//		}
+//		System.out.println("avg: " + (test / (double)len));
+//		System.out.println("min: " + min);
+//		System.out.println("max: " + max);
+//		System.out.println("pos %: " + (pos/(double)len)*100.0);
+//		System.out.println("neg %: " + (neg/(double)len)*100.0);
+//		System.out.println("zero %: " + (zero/(double)len)*100.0);
+//		System.exit(0);
 		
 		/* Start a thread of GeneticImage for each image chunk. */
 		ArrayList<GenAlgThread> threadsList = new ArrayList<GenAlgThread>();
@@ -57,7 +92,7 @@ public class Main {
 			PolygonImage[] population = new PolygonImage[Cons.POPULATION_SIZE];
 			population[0] = assemblePolyImage(
 					polyImages, image.getWidth(), image.getHeight(), chunksCount);
-			RandomAlgorithm randomAlg = new RandomAlgorithm(population[0].getNumberOfPolygons());
+			RandomAlgorithm randomAlg = new RandomAlgorithm(population[0].getPolyCount());
 			for (int i = 1; i < population.length; i++)
 				population[i] = randomAlg.process(population[0]);
 			
@@ -107,7 +142,7 @@ public class Main {
 			polyImage = assemblePolyImage(polyImages, w, h, chunksCount);
 		else
 			polyImage = polyImages[0];
-		return PolygonImage.paintImage(w, h, polyImage.getPolygons(), 0);
+		return Renderer.paintImage(w, h, polyImage.getPolygons(), 0);
 	}
 	
 	/**
