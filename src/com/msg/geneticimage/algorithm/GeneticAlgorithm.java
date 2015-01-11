@@ -4,13 +4,13 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 
 import com.msg.geneticimage.gfx.PolygonImage;
 import com.msg.geneticimage.gfx.Polygon;
 import com.msg.geneticimage.gfx.Renderer;
 import com.msg.geneticimage.interfaces.Cons;
 import com.msg.geneticimage.main.FitnessCalc;
+import com.msg.geneticimage.main.GeneCan;
 import com.msg.geneticimage.main.GeneticImage;
 import com.msg.geneticimage.main.NanoTimer;
 import com.msg.geneticimage.main.FileHandler;
@@ -22,7 +22,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	private PolygonImage currentBestImage, currentImage;
 	private GeneticImage geneticImage;
 	private ArrayList<PolygonImage> population;
-	private ArrayList<PolygonImage> geneCan;
+	private GeneCan geneCan;
 	private int stagnating;
 	private double mutationRatio;
 	private boolean[] usedPop = new boolean[Cons.POPULATION_SIZE << 1];
@@ -35,7 +35,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 		currentBestImage = new PolygonImage(this.geneticImage, maxIterations);
 		currentImage = currentBestImage;
 		population = new ArrayList<PolygonImage>();
-		geneCan = new ArrayList<PolygonImage>();
+		geneCan = new GeneCan();
 		mutationRatio = Cons.MUTATION_RATIO;
 	}
 
@@ -99,7 +99,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 			iterations++;
 			
 			/* Update the gene can state. */
-			updateGeneCan();
+			geneCan.update();
 			
 			/* Reset usedPop array. */
 			Arrays.fill(usedPop, false);
@@ -191,7 +191,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 						". Waste: " + wasted +
 						". PFGC: " + pickedFromCan +
 						". Mut.ratio: " + Tools.nDecimals(mutationRatio, 4) +
-						". geneCan: " + geneCan.size() +
+						". geneCan: " + geneCan.getSize() +
 						". Fit%: " + Tools.nDecimals((1.0 - fitPercent) * 100.0, 5) + 
 						". Polys: " + currentBestImage.getPolyCount());
 			}
@@ -209,18 +209,6 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	/* 
 	 * ------------------------<<<<< End main algorithm >>>>>------------------------- 
 	 */
-	
-	public void debugPrintPopulation() {
-		System.out.println("Population:");
-		for (PolygonImage chromo : population)
-			System.out.println(chromo.getFitness() + " age: " + chromo.getAge());
-	}
-	
-	public void debugPrintGeneCan() {
-		System.out.println("Gene Can:");
-		for (PolygonImage chromo : geneCan)
-			System.out.println(chromo.getFitness() + " age: " + chromo.getAge());
-	}
 	
 	/**
 	 * Calculates chance of mutation with Cons.MUTATION_RATIO as base.
@@ -258,8 +246,8 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 		PolygonImage[] parents = new PolygonImage[Cons.NUMBER_OF_PARENTS];
 		int pickIndex;
 		for (int i = 0; i < parents.length; i++) {
-			if(!isGeneCanEmpty() && Tools.mutatable(Cons.PARENT_FROM_GENECAN_RATIO)) {
-				int picked = Tools.rndInt(0, geneCan.size()-1);
+			if(!geneCan.isEmpty() && Tools.mutatable(Cons.PARENT_FROM_GENECAN_RATIO)) {
+				int picked = Tools.rndInt(0, geneCan.getSize()-1);
 				parents[i] = geneCan.get(picked);
 				pickedFromCan++;
 			} else {
@@ -273,54 +261,6 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 		/* Reset isDirty flags. */
 		for (PolygonImage chromo : parents)
 			chromo.setDirty(false);
-		
-		return parents;
-	}
-	
-	/**
-	 * Returns NUMBER_OF_PARENTS indexes of random parents from population.
-	 * NOT USED.
-	 * @return indexes
-	 */
-	public int[] selectParents() {
-		int[] parents = new int[Cons.NUMBER_OF_PARENTS];
-		int choice = Tools.rndInt(0, 4);
-		int range = 0;
-		boolean rnd = true;
-		boolean bothBestAndWorst = false;
-		boolean justWorst = false;
-		switch(choice) {
-		/* Random two */
-		case 0:
-			range = population.size();
-			break;
-		/* Random from best and worst each */
-		case 1:
-			range = population.size() >> 1;
-			bothBestAndWorst = true;
-			break;
-		/* Random two from best */
-		case 2:
-			justWorst = true;
-		/* Random two from worst */
-		case 3:
-			range = population.size() >> 1;
-			break;
-		/* Top two best */
-		case 4:
-			range = parents.length;
-			rnd = false;
-		}
-		
-		for (int p = 0; p < parents.length; p++)
-			if(rnd) {
-				parents[p] = Tools.rndInt(0, range-1);
-				if(justWorst)
-					parents[p] += range;
-				if(p > 0 && bothBestAndWorst)
-					parents[p] = Tools.rndInt(0, range-1) + range;
-			} else
-				parents[p] = p;
 		
 		return parents;
 	}
@@ -393,7 +333,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	 */
 	public void removeWorstHalf() {
 		/* Put top half of population in gene can. */
-		addToGeneCan(getBottomHalfPopulation(population));		
+		geneCan.add(getBottomHalfPopulation(population));		
 		/* Remove worst half of population. */
 		population = getTopHalfPopulation(population);
 	}
@@ -404,11 +344,11 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	public void injectBlood() {
 		for (PolygonImage chromo : population)
 			chromo.setNewPolyCount(chromo.getPolyCount() + maxIterations);
-		for (PolygonImage chromo : geneCan)
+		for (PolygonImage chromo : geneCan.getGenes())
 			chromo.setNewPolyCount(chromo.getPolyCount() + maxIterations);
 		
 		/* Put top half of population in gene can. */
-		addToGeneCan(getBottomHalfPopulation(population));
+		geneCan.add(getBottomHalfPopulation(population));
 		
 		/* Remove worst half of population. */
 		population = getTopHalfPopulation(population);
@@ -426,38 +366,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 				". Adding " + maxIterations + " new polys.");
 	}
 	
-	public void addToGeneCan(PolygonImage chromosome) {
-		chromosome.resetAge();
-		geneCan.add(chromosome);
-	}
-	
-	public void addToGeneCan(ArrayList<PolygonImage> chromosomes) {
-		for (PolygonImage chromosome : chromosomes) {
-			chromosome.resetAge();
-			geneCan.add(chromosome);
-		}
-	}
-	
-	/**
-	 * Updates age of all chromosomes in geneCan.
-	 * If age == 0, remove chromosome.
-	 */
-	public void updateGeneCan() {
-		if(!geneCan.isEmpty()) {
-			Iterator<PolygonImage> iter = geneCan.iterator();
-			PolygonImage chromosome;
-			while (iter.hasNext()) {
-				chromosome = iter.next();
-				chromosome.decrAge();
-			    if(chromosome.isZeroAge())
-			        iter.remove();
-			}
-		}
-	}
-	
-	public boolean isGeneCanEmpty() {
-		return geneCan.isEmpty();
-	}
+
 	
 	public PolygonImage getCurrentBestImage() {
 		return currentBestImage;

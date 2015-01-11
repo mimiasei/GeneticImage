@@ -6,8 +6,8 @@ public interface Cons {
 	static final double ONE_THIRD = 1.0 / 3.0;
 	
 	 /* Input image path. */
-	 static final String IMAGE_PATH = "images/monalisahead128px.png";
-	// static final String IMAGE_PATH = "images/Lena128px.png";
+//	 static final String IMAGE_PATH = "images/monalisahead128px.png";
+	 static final String IMAGE_PATH = "images/Lena128px.png";
 //	 static final String IMAGE_PATH = "images/ask128px.png";
 	// static final String IMAGE_PATH = "images/spiritedAway_bathroomHouse.jpg";
 	// static final String IMAGE_PATH = "images/miriamOgAsk_brygga.jpg";
@@ -25,7 +25,7 @@ public interface Cons {
 	 /* Frequency for how often print out of updates occur, once every PRINT_FREQUENCY times. */ 
 	 static final int PRINT_FREQUENCY = 200;
 	 /* Set to true for plotting data for use in GnuPlot. */
-	 static final boolean PLOT_DATA = false;
+	 static final boolean PLOT_DATA = true;
 	 /* Number of generations to iterate generic algorithm loop. */
 	 static final int NUMBER_OF_GENERATIONS = 1000000;
 	 /* Number of stagnations causing new blood injection, replacing worse half of population. */
@@ -45,7 +45,7 @@ public interface Cons {
 	 /* Ideal number of polygons in a PolygonImage. More gives worse fitness. */
 	 static final int POLYGON_COUNT = 50; // Minimum 4.
 	 /* Bit shift amount on POLYGON_COUNT for starting polygon count. */
-	 static final int POLYCOUNT_INITIATE_SHIFT = 5;
+	 static final int POLYCOUNT_INITIATE_SHIFT = 4;
 	 /* Fitness calculation pixel step size. */
 	 static final int FITNESS_PIXEL_STEP = 1;
 	
@@ -69,7 +69,7 @@ public interface Cons {
 	 /* Random max number of polygon vertices, plus 3 (= minimum). */
 	 static final int POLYGON_VERTICES = 2; 
 	 /* Max starting age of new chromosomes. */
-	 static final int CHROMOSOME_MAX_STARTING_AGE = 5;
+	 static final int CHROMOSOME_MAX_STARTING_AGE = 5; // NOT USED
 	 
 	 // Scale factors:
 	 /* Factor for max percent fuzziness set to vertices or polygons when mutating. */
@@ -83,7 +83,7 @@ public interface Cons {
 	 /* Percent chance of resetting mutation ratio to MUTATION_RATIO. Should be low! */
 	 static final double CHANCE_OF_MUT_RATIO_RESET = 0.05;
 	 /* Percent chance of chromosomes in gene can dying. */
-	 static final double CHANCE_OF_CAN_GENES_DYING = 0.1;
+	 static final double CHANCE_OF_CAN_GENES_DYING = 0.25;
 	 /* Percent chance of replacing an object by a new random one. */
 	 static final double RANDOM_NEW_RATIO = 0.05;
 	 /* Percent chance of picking a parent from the gene can. */
@@ -93,7 +93,7 @@ public interface Cons {
 	 /* Percent chance of changing number of polygon vertices. */
 	 static final double CHANGE_VERTICES_COUNT_RATIO = 0.5;
 	 /* Percent chance of changing colour of polygon. */
-	 static final double CHANGE_COLOUR_RATIO = 0.5;
+	 static final double CHANGE_COLOUR_RATIO = 0.35;
 	 /* Percent chance of adding or removing a polygon. */
 	 static final double CHANGE_POLYCOUNT_RATIO = 0.1;
 	 /* Percent chance of removing a polygon. */

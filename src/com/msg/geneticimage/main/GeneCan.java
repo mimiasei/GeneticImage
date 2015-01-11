@@ -14,14 +14,20 @@ public class GeneCan {
 		genes = new ArrayList<PolygonImage>();
 	}
 	
-	public void addToGeneCan(PolygonImage chromosome) {
-//		chromosome.resetAge();
+	public ArrayList<PolygonImage> getGenes() {
+		return genes;
+	}
+	
+	public PolygonImage get(int index) {
+		return genes.get(index);
+	}
+	
+	public void add(PolygonImage chromosome) {
 		genes.add(chromosome);
 	}
 	
-	public void addToGeneCan(ArrayList<PolygonImage> chromosomes) {
+	public void add(ArrayList<PolygonImage> chromosomes) {
 		for (PolygonImage chromosome : chromosomes) {
-//			chromosome.resetAge();
 			genes.add(chromosome);
 		}
 	}
@@ -30,14 +36,11 @@ public class GeneCan {
 	 * Updates age of all chromosomes in genes.
 	 * If age == 0, remove chromosome.
 	 */
-	public void updateGeneCan() {
+	public void update() {
 		if(!genes.isEmpty()) {
 			Iterator<PolygonImage> iter = genes.iterator();
-//			PolygonImage chromosome;
 			while (iter.hasNext()) {
-//				chromosome = iter.next();
-//				chromosome.decrAge();
-//			    if(chromosome.isZeroAge())
+				PolygonImage chromo = iter.next();
 				if(Tools.mutatable(Cons.CHANCE_OF_CAN_GENES_DYING))
 			        iter.remove();
 			}
@@ -48,7 +51,7 @@ public class GeneCan {
 		return genes.size();
 	}
 	
-	public boolean isGeneCanEmpty() {
+	public boolean isEmpty() {
 		return genes.isEmpty();
 	}
 }

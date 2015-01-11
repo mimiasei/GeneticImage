@@ -15,7 +15,7 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	private ArrayList<Polygon> polygons = new ArrayList<Polygon>();
 	private GeneticImage geneticImage;
 	private long fitness = Long.MAX_VALUE;
-	private int numberOfPolygons, age;
+	private int numberOfPolygons;
 	private String name;
 	private boolean isDirty;
 	
@@ -28,7 +28,6 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		this.geneticImage = geneticImage;
 		this.numberOfPolygons = numberOfPolygons;
 		this.name = "PolygonImage";
-		resetAge();
 		isDirty = false;
 	}
 	
@@ -39,7 +38,6 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 		this.polygons.clear();
 		this.polygons.addAll(clone.polygons);
 		this.name = clone.name;
-		this.age = clone.age;
 	}
  	
 	public BufferedImage getImage() {
@@ -102,27 +100,6 @@ public class PolygonImage implements Gene, Comparable<PolygonImage> { // extends
 	
 	public void setName(String name) {
 		this.name = name;
-	}
-	
-	public int getAge() {
-		return age;
-	}
-	
-	public boolean isZeroAge() {
-		return (age == 0);
-	}
-	
-	public void setZeroAge() {
-		age = 0;
-	}
-
-	public void resetAge() {
-		this.age = Tools.rndInt(1, Cons.CHROMOSOME_MAX_STARTING_AGE);
-	}
-	
-	public void decrAge() {
-		if(age > 0)
-			age--;
 	}
 
 	public boolean isDirty() {

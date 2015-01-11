@@ -1,7 +1,6 @@
 package com.msg.geneticimage.gfx;
 
 import java.awt.Color;
-import java.util.Random;
 
 import com.msg.geneticimage.interfaces.Cons;
 import com.msg.geneticimage.interfaces.Gene;
