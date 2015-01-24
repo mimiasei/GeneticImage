@@ -1,16 +1,56 @@
 package com.msg.geneticimage.main;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 
+import com.msg.geneticimage.algorithm.GeneticAlgorithm;
 import com.msg.geneticimage.gfx.PolygonImage;
 import com.msg.geneticimage.interfaces.Cons;
+import com.msg.geneticimage.tools.Tools;
 
 public class ParentPicker {
 	
-	ArrayList<PolygonImage> population;
+	private GeneticAlgorithm genAlg;
+	private int pickedFromCan;
+	private boolean[] usedPop;
+	private int popSize;
 	
-	public ParentPicker(ArrayList<PolygonImage> population) {
-		this.population = population;
+	public ParentPicker(GeneticAlgorithm genAlg) {
+		this.genAlg = genAlg;
+		popSize = genAlg.getPopulation().length;
+		pickedFromCan = 0;
+		usedPop = new boolean[popSize << 1];
+	}
+	
+	/**
+	 * Return random NUMBER_OF_PARENTS parents, picked from both
+	 * population and gene can. Chance of picking from gene can
+	 * is random by factor CHANCE_GENECAN_PARENT_RATIO.
+	 * @return parents
+	 */
+	public PolygonImage[] getParents() {
+		PolygonImage[] parents = new PolygonImage[Cons.NUMBER_OF_PARENTS];
+		GeneCan geneCan = genAlg.getGeneCan();
+		PolygonImage[] population = genAlg.getPopulation();
+		int pickIndex;
+		for (int i = 0; i < parents.length; i++) {
+			if(!geneCan.isEmpty() && Tools.mutatable(Cons.CHANCE_GENECAN_PARENT_RATIO)) {
+				int picked = Tools.rndInt(0, geneCan.getSize()-1);
+				parents[i] = geneCan.get(picked);
+				pickedFromCan++;
+				genAlg.geneCanPicked();
+			} else {
+				do
+					pickIndex = Tools.rndInt(0, popSize - 1);
+				while (usedPop[pickIndex]);
+				parents[i] = population[pickIndex];
+				usedPop[pickIndex] = true;
+			}
+		}
+		/* Reset isDirty flags. */
+		for (PolygonImage chromo : parents)
+			chromo.setDirty(false);
+		
+		return parents;
 	}
 	
 	/**
@@ -19,6 +59,7 @@ public class ParentPicker {
 	 * @return indexes
 	 */
 	public int[] selectParents() {
+		PolygonImage[] population = genAlg.getPopulation();
 		int[] parents = new int[Cons.NUMBER_OF_PARENTS];
 		int choice = Tools.rndInt(0, 4);
 		int range = 0;
@@ -28,11 +69,11 @@ public class ParentPicker {
 		switch(choice) {
 		/* Random two */
 		case 0:
-			range = population.size();
+			range = population.length;
 			break;
 		/* Random from best and worst each */
 		case 1:
-			range = population.size() >> 1;
+			range = population.length >> 1;
 			bothBestAndWorst = true;
 			break;
 		/* Random two from best */
@@ -40,7 +81,7 @@ public class ParentPicker {
 			justWorst = true;
 		/* Random two from worst */
 		case 3:
-			range = population.size() >> 1;
+			range = population.length >> 1;
 			break;
 		/* Top two best */
 		case 4:
@@ -59,5 +100,17 @@ public class ParentPicker {
 				parents[p] = p;
 		
 		return parents;
+	}
+
+	public int getPickedFromCan() {
+		return pickedFromCan;
+	}
+
+	public void resetUsedPop() {
+		Arrays.fill(usedPop, false);	
+	}
+
+	public int getPicked() {
+		return pickedFromCan;
 	}
 }

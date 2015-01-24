@@ -4,7 +4,7 @@ import java.awt.Point;
 
 import com.msg.geneticimage.interfaces.Cons;
 import com.msg.geneticimage.interfaces.Gene;
-import com.msg.geneticimage.main.Tools;
+import com.msg.geneticimage.tools.Tools;
 
 public class Vertex implements Gene {
 	
@@ -38,13 +38,13 @@ public class Vertex implements Gene {
 
 	@Override
 	public void mutate() {	
-		if(Tools.mutatable(Cons.CHANGE_VERTICES_RATIO)) {
-			x += Tools.gaussianInt(w, Cons.VERTICES_FUZZINESS_SCALE);
-			y += Tools.gaussianInt(h, Cons.VERTICES_FUZZINESS_SCALE);
-//			x += (Tools.rndInt(0, (int)(w * Cons.VERTICES_FUZZINESS_SCALE)) * 
-//					(Tools.rndBool() ? 1 : -1));
-//			y += (Tools.rndInt(0, (int)(h * Cons.VERTICES_FUZZINESS_SCALE)) *
-//					(Tools.rndBool() ? 1 : -1));
+		if(Tools.mutatable(Cons.CHANCE_VERTICES_RATIO)) {
+			x += Tools.gaussianInt(w, Tools.sliders.get("FACTOR_VERTICES_FUZZINESS"));
+			y += Tools.gaussianInt(h, Tools.sliders.get("FACTOR_VERTICES_FUZZINESS"));
+//			int sign = Tools.rndBool() ? 1 : -1;
+//			x += Tools.randomInt(0, (int)Math.max(w * Tools.sliders.get("FACTOR_VERTICES_FUZZINESS"), 1))*sign;
+//			sign = Tools.rndBool() ? 1 : -1;
+//			y += Tools.randomInt(0, (int)Math.max(h * Tools.sliders.get("FACTOR_VERTICES_FUZZINESS"), 1))*sign;
 		}
 	}
 

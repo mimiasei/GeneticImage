@@ -9,6 +9,7 @@ import java.awt.image.BufferedImage;
 
 
 
+
 //import java.io.IOException;
 //
 //import javax.imageio.ImageIO;
@@ -22,6 +23,7 @@ import com.msg.geneticimage.algorithm.RandomAlgorithm;
 import com.msg.geneticimage.gfx.PolygonImage;
 import com.msg.geneticimage.gfx.Renderer;
 import com.msg.geneticimage.interfaces.Cons;
+import com.msg.geneticimage.tools.Tools;
 
 public class GeneticImage {
 	
@@ -31,17 +33,21 @@ public class GeneticImage {
 	private int polyCount;
 	private PolygonImage[] population;
 	private Color bgColour = Color.BLACK;
+	private boolean plotData = false;
 	
-	public GeneticImage(BufferedImage inputImg) {	
+	public GeneticImage(BufferedImage inputImg, boolean plotData) {	
 		this.image = inputImg;
 		/* Max bit shift = -1 means no population. */
 		this.maxBitShift = -1;
+		this.plotData = plotData;
 	}
 	
-	public GeneticImage(BufferedImage inputImg, byte maxBitShift, PolygonImage[] population) {	
+	public GeneticImage(BufferedImage inputImg, byte maxBitShift, 
+						PolygonImage[] population, boolean plotData) {	
 		this.image = inputImg;
 		this.maxBitShift = maxBitShift;
 		this.population = population;
+		this.plotData = plotData;
 	}
 	
 	public PolygonImage process(int polyCount) {
@@ -77,10 +83,12 @@ public class GeneticImage {
 		 */
 		if(population == null) {
 			Algorithm<PolygonImage> randomAlg = new RandomAlgorithm(getPolyCount(maxBitShift));
-			population = new PolygonImage[Cons.POPULATION_SIZE];
+			int popSize = (int)Tools.sliders.get("NBR_POPULATION_SIZE");
+			popSize = popSize % 2 == 0 ? popSize : popSize + 1;
+			population = new PolygonImage[popSize];
 			PolygonImage polygonImage = new PolygonImage(this, getPolyCount(maxBitShift));
 			
-			/* Create POPULATION_SIZE number of random PolygonImages as chromosomes. */
+			/* Create NBR_POPULATION_SIZE number of random PolygonImages as chromosomes. */
 			for (byte i = 0; i < population.length; i++) {
 				polygonImage = randomAlg.process(polygonImage);
 				polygonImage.calculateFitness();
@@ -110,8 +118,7 @@ public class GeneticImage {
 			currentSize = new Point(startSize.x >> bitShift, startSize.y >> bitShift);
 			System.out.println("Shifting image by: " + bitShift + " -> Current size: " + currentSize);
 			
-			compareImage = getScaledImage(imagePixels, startSize,
-					new Point(startSize.x >> bitShift, startSize.y >> bitShift));
+			compareImage = getScaledImage(imagePixels, startSize, currentSize);
 			
 			geneticAlg = new GeneticAlgorithm(this);
 			/* Set population as current population. */
@@ -119,22 +126,23 @@ public class GeneticImage {
 			/* Set number of polygons for the algorithm. */
 			geneticAlg.setMaxIterations(getPolyCount(bitShift));
 
-			
-			/* Set ratio for how much smaller best fitness must be compared to initial fitness
-			 * before stopping algorithm loop. 
-			 */
+			/* Start genetic algorithm as new thread. */
 			runnableGenAlg = new GeneticAlgThread(geneticAlg);
 			thread = new Thread(runnableGenAlg); 
 			thread.start();
-					
+			
+			/* Create JLabels of the original and the generated image made of polygons. */
 			compareImageLabel = new JLabel(new ImageIcon(compareImage));
 			bestPolygonImageLabel = new JLabel(new ImageIcon(currentBestImage.getImage()));
 			
+			/* Build and set up frame of the two image JLabels. */
 			frame.getContentPane().setLayout(new FlowLayout());
 			frame.getContentPane().add(compareImageLabel);
 			frame.getContentPane().add(bestPolygonImageLabel);
 			frame.setTitle("Best: " + currentBestImage.getFitness());
 			frame.pack();
+			
+			/* Display frame. */
 			frame.setVisible(true);
 	
 			/* Run until algorithm thread is finished thus terminated. */
@@ -256,5 +264,13 @@ public class GeneticImage {
 
 	public Color getBgColour() {
 		return bgColour ;
+	}
+
+	public int getPopSize() {
+		return population.length;
+	}
+
+	public boolean isPlotData() {
+		return plotData;
 	}
 }

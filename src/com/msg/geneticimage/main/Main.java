@@ -1,9 +1,11 @@
 package com.msg.geneticimage.main;
 
+import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.Graphics2D;
 //import java.awt.Point;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 
 import javax.swing.ImageIcon;
@@ -11,10 +13,13 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 
 import com.msg.geneticimage.algorithm.RandomAlgorithm;
+import com.msg.geneticimage.gfx.GenImageFrame;
 import com.msg.geneticimage.gfx.Polygon;
 import com.msg.geneticimage.gfx.PolygonImage;
 import com.msg.geneticimage.gfx.Renderer;
+import com.msg.geneticimage.gfx.ScrollGraph;
 import com.msg.geneticimage.interfaces.Cons;
+import com.msg.geneticimage.tools.Tools;
 
 public class Main {
 	
@@ -38,10 +43,10 @@ public class Main {
 ////		double normDist = 100.0;
 //		int res;
 //		for (int i = 0; i < len; i++) {
-////			res = (int)(Tools.gaussian(ratio, normDist) * (image.getWidth() * Cons.VERTICES_FUZZINESS_SCALE));
-////			double temp = res / (normDist * Cons.VERTICES_FUZZINESS_SCALE * 100);
+////			res = (int)(com.msg.geneticimage.tools.gaussian(ratio, normDist) * (image.getWidth() * Cons.FACTOR_VERTICES_FUZZINESS));
+////			double temp = res / (normDist * Cons.FACTOR_VERTICES_FUZZINESS * 100);
 ////			temp = ((Math.abs(temp) > 0.1 && Math.abs(temp) <= 1.0) ? (Math.signum(temp) * 1.0) : temp);
-//			res = Tools.gaussianInt(image.getWidth(), Cons.VERTICES_FUZZINESS_SCALE);
+//			res = com.msg.geneticimage.tools.gaussianInt(image.getWidth(), Cons.FACTOR_VERTICES_FUZZINESS);
 ////			res = (int)temp;
 //			test += res;
 //			if(res > max) max = res;
@@ -64,8 +69,19 @@ public class Main {
 		PolygonImage[] polyImages = new PolygonImage[chunksCount];
 		Thread thread;
 		
+		/* Start frame with start button as thread. */
+		GenImageFrame genImgFrame = new GenImageFrame();		
+		EventQueue.invokeLater(genImgFrame);
+		
+		/* Wait until start button has been pressed. */
+		while(!genImgFrame.isStarted()) {
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException e) {}
+		}
+		
 		for (byte i = 0; i < chunksCount; i++) {
-			GenAlgThread genAlgThread = new GenAlgThread(image, chunksCount, i, (byte)-1, null);
+			GenAlgThread genAlgThread = new GenAlgThread(image, chunksCount, i, (byte)-1, null, genImgFrame.isPlotData());
 			threadsList.add(genAlgThread);
 			thread = new Thread(genAlgThread);
 			System.out.println("starting thread...");
@@ -89,7 +105,9 @@ public class Main {
 		
 		/* Put together all chunks and add to new population of otherwise random polyImages. */	
 		if(Cons.IMAGE_CHUNKS > 1) {	
-			PolygonImage[] population = new PolygonImage[Cons.POPULATION_SIZE];
+			int popSize = (int)Tools.sliders.get("NBR_POPULATION_SIZE");
+			popSize = popSize % 2 == 0 ? popSize : popSize + 1;
+			PolygonImage[] population = new PolygonImage[popSize];
 			population[0] = assemblePolyImage(
 					polyImages, image.getWidth(), image.getHeight(), chunksCount);
 			RandomAlgorithm randomAlg = new RandomAlgorithm(population[0].getPolyCount());
@@ -97,7 +115,9 @@ public class Main {
 				population[i] = randomAlg.process(population[0]);
 			
 			/* Start new thread for algorithm on complete polyImage. */
-			GenAlgThread genAlgThread = new GenAlgThread(image, 1, 1, (byte)0, population);
+			boolean plotData = genImgFrame.isPlotData();
+			GenAlgThread genAlgThread = 
+					new GenAlgThread(image, 1, 1, (byte)0, population, plotData);
 			thread = new Thread(genAlgThread);
 			thread.start();
 			
@@ -262,6 +282,7 @@ public class Main {
 		private BufferedImage completeImage;
 		private byte maxBitShift;
 		PolygonImage[] population = null;
+		boolean plotData = false;
 		
 		/**
 		 * MaxBitShift -1 = no population (for starting algorithm from scratch).
@@ -274,29 +295,36 @@ public class Main {
 		 * @param population
 		 */
 		public GenAlgThread(BufferedImage completeImage, 
-				int count, int nbr, byte maxBitShift, PolygonImage[] population) {
+							int count, int nbr, byte maxBitShift, 
+							PolygonImage[] population, boolean plotData) {
 			this.polyImage = null;
 			this.count = count;
 			this.nbr = nbr;
 			this.completeImage = completeImage;
 			this.maxBitShift = maxBitShift;
 			this.population = population;
+			this.plotData = plotData;
 		}
 
 		@Override
 		public void run() {
-			int polyCount = Cons.POLYGON_COUNT >> Cons.POLYCOUNT_INITIATE_SHIFT;
-			BufferedImage chunk = this.completeImage;
+			GeneticImage genImage;
+			BufferedImage chunk;
+			int polyCount = Cons.NBR_POLYGON_COUNT >> Cons.NBR_POLYCOUNT_INITIATE_SHIFT;
 			if(count > 1)
 				chunk = getImageChunk(this.completeImage, count, nbr);
-			if(chunk != null)
+			else
+				chunk = this.completeImage;
+			if(chunk != null) {
 				/* Round poly count upwards. */
-				if(maxBitShift < 0)
-					polyImage = new GeneticImage(chunk).process(
-							(int)Math.round(polyCount/(double)count));
-				else
-					polyImage = new GeneticImage(chunk, maxBitShift, population).process(
-							(int)Math.round(polyCount/(double)count));
+				if(maxBitShift < 0) {
+					genImage = new GeneticImage(chunk, plotData);
+					polyImage = genImage.process((int)Math.round(polyCount/(double)count));
+				} else {
+					genImage = new GeneticImage(chunk, maxBitShift, population, plotData);
+					polyImage = genImage.process((int)Math.round(polyCount/(double)count));
+				}
+			}
 		}
 		
 		public PolygonImage getPolyImage() {

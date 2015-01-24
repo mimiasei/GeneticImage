@@ -1,20 +1,29 @@
 package com.msg.geneticimage.main;
 
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 
 import com.msg.geneticimage.gfx.PolygonImage;
 import com.msg.geneticimage.interfaces.Cons;
+import com.msg.geneticimage.tools.SortedList;
+import com.msg.geneticimage.tools.Tools;
 
 public class GeneCan {
 	
-	private ArrayList<PolygonImage> genes;
+	private SortedList<PolygonImage> genes;
+	
+	/* Comparator for comparing PolygonImages. */
+	Comparator<PolygonImage> comp = new Comparator<PolygonImage>() {
+		public int compare(PolygonImage one, PolygonImage two){
+			return one.compareTo(two);
+		}
+	};
 	
 	public GeneCan() {
-		genes = new ArrayList<PolygonImage>();
+		genes = new SortedList<PolygonImage>(comp);
 	}
 	
-	public ArrayList<PolygonImage> getGenes() {
+	public SortedList<PolygonImage> getGenes() {
 		return genes;
 	}
 	
@@ -26,7 +35,7 @@ public class GeneCan {
 		genes.add(chromosome);
 	}
 	
-	public void add(ArrayList<PolygonImage> chromosomes) {
+	public void add(SortedList<PolygonImage> chromosomes) {
 		for (PolygonImage chromosome : chromosomes) {
 			genes.add(chromosome);
 		}

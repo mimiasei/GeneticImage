@@ -1,9 +1,8 @@
 package com.msg.geneticimage.algorithm;
 
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 
 import com.msg.geneticimage.gfx.PolygonImage;
 import com.msg.geneticimage.gfx.Polygon;
@@ -12,36 +11,46 @@ import com.msg.geneticimage.interfaces.Cons;
 import com.msg.geneticimage.main.FitnessCalc;
 import com.msg.geneticimage.main.GeneCan;
 import com.msg.geneticimage.main.GeneticImage;
-import com.msg.geneticimage.main.NanoTimer;
-import com.msg.geneticimage.main.FileHandler;
-import com.msg.geneticimage.main.Tools;
+import com.msg.geneticimage.main.ParentPicker;
+import com.msg.geneticimage.tools.FileHandler;
+import com.msg.geneticimage.tools.NanoTimer;
+import com.msg.geneticimage.tools.SortedList;
+import com.msg.geneticimage.tools.Tools;
 
 public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	
 	private long previousBestFitness;
 	private PolygonImage currentBestImage, currentImage;
 	private GeneticImage geneticImage;
-	private ArrayList<PolygonImage> population;
+	private SortedList<PolygonImage> population;
 	private GeneCan geneCan;
 	private int stagnating;
 	private double mutationRatio;
-	private boolean[] usedPop = new boolean[Cons.POPULATION_SIZE << 1];
 	private double fitPercent = 1.0;
 	private int iterations = 0;
-	private int pickedFromCan = 0;
+	private int popSize;
+	private boolean geneCanPicked = false;
+	
+	/* Comparator for comparing PolygonImages. */
+	Comparator<PolygonImage> comp = new Comparator<PolygonImage>() {
+		public int compare(PolygonImage one, PolygonImage two){
+			return one.compareTo(two);
+		}
+	};
 	
 	public GeneticAlgorithm(GeneticImage geneticImage) {
 		this.geneticImage = geneticImage;
+		popSize = geneticImage.getPopSize();
 		currentBestImage = new PolygonImage(this.geneticImage, maxIterations);
 		currentImage = currentBestImage;
-		population = new ArrayList<PolygonImage>();
+		population = new SortedList<PolygonImage>(comp);
 		geneCan = new GeneCan();
-		mutationRatio = Cons.MUTATION_RATIO;
+		mutationRatio = Tools.sliders.get("CHANCE_MUTATION_RATIO");
 	}
 
 	/**
 	 * Genetic algorithm. Optimizes a given population array of PolygonImages
-	 * of size POPULATION_SIZE and returns the optimized array.
+	 * of size NBR_POPULATION_SIZE and returns the optimized array.
 	 * @param PolygonImage[]
 	 * @return new PolygonImage[]
 	 */
@@ -58,11 +67,12 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 		
 		/* If plotData then create fileHandler for saving data for plotting
 		 * in GnuPlot. */
-		FileHandler plotter;
+		FileHandler plotter = null;
 		if(Cons.PLOT_DATA)
 			plotter = new FileHandler(population.get(0));
 		
 		long startFitness;
+		ParentPicker parentPicker = new ParentPicker(this);
 		PolygonImage[] parent = new PolygonImage[Cons.NUMBER_OF_PARENTS];
 		PolygonImage[] children;
 		
@@ -80,10 +90,18 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 		startFitness = population.get(0).getFitness();
 		previousBestFitness = startFitness;
 		stagnating = 0;
-		int minFitnessDiff = (int)Math.max(1, startFitness * Cons.MIN_FITNESS_DIFF_RATIO);
+		int minFitnessDiff = (int)Math.max(1, startFitness * Cons.NBR_MIN_FITNESS_DIFF_RATIO);
 		int wasted = 0;
+		
+		/* If selected, create fileHandler for plotting all new children data. */ 
+		FileHandler childPlotter = null;
+		if(geneticImage.isPlotData()) {
+			long[] dataSet = {startFitness, popSize};
+			String[] labels = {"Generation", "Fitness", "Picked from geneCan"};		
+			childPlotter = new FileHandler(dataSet, labels, Cons.EXT_CSV);
+		}
 						
-		System.out.println("\nGenetic algorithm. Pop. size: " + Cons.POPULATION_SIZE + ". Poly count: " +
+		System.out.println("\nGenetic algorithm. Pop. size: " + popSize + ". Poly count: " +
 				maxIterations + ". Image dims: " + compareImage.getWidth() + " x " + compareImage.getHeight() +
 				". BitShift: " + geneticImage.getBitShift() + ". Min fitnessDiff: " + minFitnessDiff);
 		
@@ -92,7 +110,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 		/* 
 		 * - -----------~~~=====<< Main algorithm loop. >>=====~~~----------- - 
 		 */
-		while (fitPercent > 0.005 || stagnating < Cons.NUMBER_OF_GENERATIONS) {
+		while (fitPercent > 0.005 || stagnating < Cons.NBR_OF_GENERATIONS) {
 			
 			nanoTimer.startTimer();
 			
@@ -102,16 +120,17 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 			geneCan.update();
 			
 			/* Reset usedPop array. */
-			Arrays.fill(usedPop, false);
+			parentPicker.resetUsedPop();
 			
 //			boolean better = false;
 			
 			/* Go through population picking two parents at a time. */
-			for (int p = 0; p < Cons.POPULATION_SIZE; p += 2) {
+			for (int p = 0; p < popSize; p += 2) {
 			
 				/* Get random NUMBER_OF_PARENTS parents from combined
 				 * pool of population and gene can. */
-				parent = getParents();
+//				parent = getParents();
+				parent = parentPicker.getParents();
 				
 				children = new PolygonImage[parent.length];
 				
@@ -139,6 +158,13 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 					if(children[c].isDirty())
 						children[c].calculateFitness();
 					population.add(children[c]);
+					/* Plot child data. */
+					if(geneticImage.isPlotData()) {
+						long[] dataSet = {children[c].getFitness(), 
+										currentBestImage.getFitness(),
+										(isGeneCanPicked() ? 1L : 0L)};
+						childPlotter.saveData(dataSet, iterations);
+					}
 //					if(children[c].getFitness() < currentBestImage.getFitness())
 //						better = true;
 				}	
@@ -146,11 +172,12 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 			
 			previousBestFitness = currentBestImage.getFitness();
 			
-			/* Only bother with sorting population if a child's fitness
-			 * actually is an improvement. */
-//			if(better) {
 			/* Sort newPopulation by fitness. */
-			Collections.sort(population);
+//			Collections.sort(population);
+			
+//			for (PolygonImage chromo : population)
+//				System.out.println(chromo.getFitness());
+//			System.out.println("------------------------");
 			
 			/* Check if current fitness is the better one. */
 			if(population.get(0).getFitness() < currentBestImage.getFitness())
@@ -161,23 +188,26 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 			/* Remove worst half and put that half in gene can. */
 			removeWorstHalf();
 			
-			/* If current best fitness is not more than MIN_FITNESS_DIFF_RATIO better 
+			/* If current best fitness is not more than NBR_MIN_FITNESS_DIFF_RATIO better 
 			 * than previous best, increment stagnating. Else, reset stagnating. */
-			minFitnessDiff = (int)(currentBestImage.getFitness() * Cons.MIN_FITNESS_DIFF_RATIO);
+			minFitnessDiff = (int)(currentBestImage.getFitness() * Cons.NBR_MIN_FITNESS_DIFF_RATIO);
 			if((previousBestFitness - currentBestImage.getFitness()) < minFitnessDiff)
 				stagnating++;
 			else
 				stagnating = 0;
 			
-			/* If stagnating NUMBER_OF_STAGNATIONS times, inject new blood. */
+			/* If stagnating NBR_OF_STAGNATIONS times, inject new blood. */
 			if(isStagnating())
 				injectBlood();
 			
 			nanoTimer.stopTimer();
 			
 			/* Plot best and worst graph. */
-			if(Cons.PLOT_DATA)
-				plotter.saveData(population, iterations);
+			if(Cons.PLOT_DATA) {
+				long[] dataSet = {population.get(0).getFitness(), 
+						currentBestImage.getFitness()};
+				plotter.saveData(dataSet, iterations);
+			}
 			
 			/* Calculate current fitness percentage compared to maxFitness. */
 			fitPercent = (double)(currentBestImage.getFitness() / (double)maxFitness);
@@ -189,7 +219,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 						". Gen#: " + iterations + 
 						". Stag: " + stagnating +
 						". Waste: " + wasted +
-						". PFGC: " + pickedFromCan +
+						". PFGC: " + parentPicker.getPicked() +
 						". Mut.ratio: " + Tools.nDecimals(mutationRatio, 4) +
 						". geneCan: " + geneCan.getSize() +
 						". Fit%: " + Tools.nDecimals((1.0 - fitPercent) * 100.0, 5) + 
@@ -211,58 +241,29 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	 */
 	
 	/**
-	 * Calculates chance of mutation with Cons.MUTATION_RATIO as base.
+	 * Calculates chance of mutation with Cons.CHANCE_MUTATION_RATIO as base.
 	 * The chance increases exponentially with number of stagnations,
 	 * making a mutation more likely to occur when current best fitness
 	 * does not improve (stagnates).
 	 * @return mutationRatio
 	 */
 	public double getMutationRatio() {
-		double mutRatio = Cons.MUTATION_RATIO;
-//		double ratio = stagnating / (double)Cons.NUMBER_OF_STAGNATIONS / 2.0;
-		if(iterations < Cons.NUMBER_OF_GENS_DEFAULT_MUT_RATIO) {		
-			double f = 1.0 - (iterations / (double)Cons.NUMBER_OF_GENS_DEFAULT_MUT_RATIO);
+		double mutRatio = Tools.sliders.get("CHANCE_MUTATION_RATIO");
+//		double ratio = stagnating / (double)Cons.NBR_OF_STAGNATIONS / 2.0;
+		if(iterations < Cons.NBR_GENS_DEFAULT_MUT_RATIO) {		
+			double f = 1.0 - (iterations / (double)Cons.NBR_GENS_DEFAULT_MUT_RATIO);
 			f *= 2.5;
 			mutRatio *= (1.0 + (f * f));
 		}
-		mutRatio = Math.min(Cons.MAX_MUTATION_RATIO, mutRatio); // + (ratio * ratio * ratio); 
+		mutRatio = Math.min(Cons.CHANCE_MAX_MUTATION_RATIO, mutRatio); // + (ratio * ratio * ratio); 
 		if(Tools.mutatable(Cons.CHANCE_OF_MUT_RATIO_RESET)) {
-			mutRatio = Cons.MUTATION_RATIO;
+			mutRatio = Cons.CHANCE_MUTATION_RATIO;
 		}
 		return mutRatio;
 	}
 	
 	public boolean isStagnating() {
-		return (stagnating > 0 && stagnating % Cons.NUMBER_OF_STAGNATIONS == 0);
-	}
-	
-	/**
-	 * Return random NUMBER_OF_PARENTS parents, picked from both
-	 * population and gene can. Chance of picking from gene can
-	 * is random by factor PARENT_FROM_GENECAN_RATIO.
-	 * @return parents
-	 */
-	public PolygonImage[] getParents() {
-		PolygonImage[] parents = new PolygonImage[Cons.NUMBER_OF_PARENTS];
-		int pickIndex;
-		for (int i = 0; i < parents.length; i++) {
-			if(!geneCan.isEmpty() && Tools.mutatable(Cons.PARENT_FROM_GENECAN_RATIO)) {
-				int picked = Tools.rndInt(0, geneCan.getSize()-1);
-				parents[i] = geneCan.get(picked);
-				pickedFromCan++;
-			} else {
-				do
-					pickIndex = Tools.rndInt(0, Cons.POPULATION_SIZE - 1);
-				while (usedPop[pickIndex]);
-				parents[i] = population.get(pickIndex);
-				usedPop[pickIndex] = true;
-			}
-		}
-		/* Reset isDirty flags. */
-		for (PolygonImage chromo : parents)
-			chromo.setDirty(false);
-		
-		return parents;
+		return (stagnating > 0 && stagnating % Cons.NBR_OF_STAGNATIONS == 0);
 	}
 	
 	/**
@@ -271,8 +272,8 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	 * @return new children
 	 */
 	public PolygonImage[] doCrossOver(PolygonImage[] children, int polyCount) {
-		if(Tools.mutatable(Cons.CROSSOVER_RATIO)) {
-			int count = Tools.rndInt(1, polyCount-1);
+		if(Tools.mutatable(Cons.CHANCE_CROSSOVER_RATIO)) {
+			int count = Tools.rndInt(Math.max(1, polyCount>>1), polyCount-1);
 			for (int b = 0; b < count; b++) {
 				Polygon tmpPoly = new Polygon(children[0].getPolygon(b));
 				children[0].setPolygon(b, children[1].getPolygon(b));
@@ -296,10 +297,10 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	 */
 	public PolygonImage[] doMutation(PolygonImage[] children, int polyCount, boolean standard) {
 		Polygon polygon;
-		double newRatio = standard ? Cons.RANDOM_NEW_RATIO : 1.0;
+		double newRatio = standard ? Cons.CHANCE_RANDOM_NEW_RATIO : 1.0;
 		for (byte c = 0; c < children.length; c++) {
-			if(Tools.mutatable(getMutationRatio())) {
-//				int pos = Tools.rndInt(0, polyCount-1);
+			if(!children[c].isDirty() || Tools.mutatable(getMutationRatio())) {
+//				int pos = com.msg.geneticimage.tools.rndInt(0, polyCount-1);
 				int pos = Tools.randomInt(0, polyCount-1);
 				if(Tools.mutatable(newRatio)) {
 					/* Generate random polygon. */
@@ -316,7 +317,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 				/* Set dirty flag since chromosome has been tweaked. */
 				children[c].setDirty(true);
 				/* Mutate number of polygons. */
-				if(Tools.mutatable(Cons.CHANGE_POLYCOUNT_RATIO)) {
+				if(Tools.mutatable(Tools.sliders.get("CHANCE_POLYCOUNT_RATIO"))) {
 					children[c].mutatePolyCount();
 					return children;
 				}
@@ -339,7 +340,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	}
 	
 	/**
-	 * If stagnating NUMBER_OF_STAGNATIONS times, inject new blood.
+	 * If stagnating NBR_OF_STAGNATIONS times, inject new blood.
 	 */
 	public void injectBlood() {
 		for (PolygonImage chromo : population)
@@ -354,7 +355,7 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 		population = getTopHalfPopulation(population);
 
 		/* Replace removed worse half with new blood. */
-		int addNumber = Cons.POPULATION_SIZE - population.size();
+		int addNumber = popSize - population.size();
 		for (int blood = 0; blood < addNumber; blood++) {
 			PolygonImage polyImage = new PolygonImage(population.get(blood));
 			polyImage.generateRandom();
@@ -399,9 +400,9 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	 * @param population
 	 * @return top half of population list
 	 */
-	public ArrayList<PolygonImage> getTopHalfPopulation(ArrayList<PolygonImage> population) {
+	public SortedList<PolygonImage> getTopHalfPopulation(SortedList<PolygonImage> population) {
 		int size = population.size();
-		ArrayList<PolygonImage> list = new ArrayList<PolygonImage>();
+		SortedList<PolygonImage> list = new SortedList<PolygonImage>(comp);
 		/* Add the best half of population. */
 		for (int p = 0; p < (size >> 1); p++)
 			list.add(population.get(p));
@@ -414,9 +415,9 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 	 * @param population
 	 * @return bottom half of population list
 	 */
-	public ArrayList<PolygonImage> getBottomHalfPopulation(ArrayList<PolygonImage> population) {
+	public SortedList<PolygonImage> getBottomHalfPopulation(SortedList<PolygonImage> population) {
 		int size = population.size();
-		ArrayList<PolygonImage> list = new ArrayList<PolygonImage>();
+		SortedList<PolygonImage> list = new SortedList<PolygonImage>(comp);
 		/* Add the worse half of population. */
 		for (int p = size - 1; p > (size >> 1)-1; p--)
 			list.add(population.get(p));
@@ -430,13 +431,18 @@ public class GeneticAlgorithm extends Algorithm<PolygonImage[]> {
 			newPop[i].calculateFitness();
 		return newPop;
 	}
-	
-	public static ArrayList<PolygonImage> recalculatePopulationFitness(ArrayList<PolygonImage> population) {
-		ArrayList<PolygonImage> newPop = new ArrayList<PolygonImage>();
-		for (PolygonImage polyImage : population) {
-			newPop.add(polyImage);
-			newPop.get(newPop.size()-1).calculateFitness();
-		}
-		return newPop;
+
+	public GeneCan getGeneCan() {
+		return geneCan;
+	}
+
+	public void geneCanPicked() {
+		geneCanPicked = true;
+	}
+
+	public boolean isGeneCanPicked() {
+		boolean geneCanPick = geneCanPicked;
+		geneCanPicked = false;
+		return geneCanPick;
 	}
 }

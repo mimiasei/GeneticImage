@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 import com.msg.geneticimage.interfaces.Cons;
 import com.msg.geneticimage.interfaces.Gene;
-import com.msg.geneticimage.main.Tools;
+import com.msg.geneticimage.tools.Tools;
 
 public class Polygon implements Gene {
 	
@@ -67,16 +67,6 @@ public class Polygon implements Gene {
 	 * @return origo
 	 */
 	public Point getOrigo() {
-//		int meanX = 0, meanY = 0;
-//		if(vertices != null && getVertexLength() > 0) {
-//			for (Vertex v : vertices) {
-//				meanX += v.x;
-//				meanY += v.y;
-//			}
-//			meanX /= getVertexLength();
-//			meanY /= getVertexLength();
-//		}
-//		return new Point(meanX, meanY);
 		return new Point(x, y);
 	}
 	
@@ -105,9 +95,9 @@ public class Polygon implements Gene {
 
 	@Override
 	public void mutate() {
-		/* Change colour of polygon if passing CHANGE_COLOUR_RATIO test. */
-		if(Tools.mutatable(Cons.CHANGE_COLOUR_RATIO)) {
-			if(Tools.mutatable(Cons.RANDOM_NEW_RATIO))
+		/* Change colour of polygon if passing CHANCE_COLOUR_RATIO test. */
+		if(Tools.mutatable(Cons.CHANCE_COLOUR_RATIO)) {
+			if(Tools.mutatable(Cons.CHANCE_RANDOM_NEW_RATIO))
 				colour = new Colour();
 			else
 				colour.mutate();
@@ -115,24 +105,24 @@ public class Polygon implements Gene {
 		}
 		
 		/* If passing test, randomly add or remove a random vertex. */
-		if(Tools.mutatable(Cons.CHANGE_VERTICES_COUNT_RATIO)) {
+		if(Tools.mutatable(Cons.CHANCE_VERTICES_COUNT_RATIO)) {
 			mutateVerticesCount();
 			return;
 		}
 		
 		/* Mutate position of vertices. */
 		for (Vertex v : vertices)
-			if(Tools.mutatable(Cons.CHANGE_VERTICES_RATIO))
+			if(Tools.mutatable(Cons.CHANCE_VERTICES_RATIO))
 				v.mutate();
 	}
 
 	@Override
 	public void generateRandom() {
-		byte vertsCount = (byte)(Tools.rndInt(3, Cons.POLYGON_VERTICES + 3));
+		byte vertsCount = (byte)(Tools.rndInt(3, 3 + Cons.NBR_POLYGON_VERTICES));
 		Vertex origo = new Vertex(w, h);
 		x = origo.x;
 		y = origo.y;
-		for (int i = 0; i < vertsCount; i++)
+		for (byte i = 0; i < vertsCount; i++)
 			vertices.add(origo);		
 	}
 	
@@ -140,15 +130,13 @@ public class Polygon implements Gene {
 	 * Mutate vertices count by randomly adding or removing a vertex.
 	 */
 	public void mutateVerticesCount() {
-		int vtxPos = Tools.rndInt(0, vertices.size()-1);
+		byte vtxPos = (byte)Tools.rndInt(0, vertices.size()-1);
 		/* Either remove vertex... */
-		if(Tools.rndBool()) {
-			if(vertices.size() > 3)
-				vertices.remove(vtxPos);
-		} else {
+		if(Tools.rndBool() && vertices.size() > 3) {
+			vertices.remove(vtxPos);
+		} else if(vertices.size() < Byte.MAX_VALUE-1) {
 			/* ...or add vertex. */
-			Vertex vertex = new Vertex(vertices.get(vtxPos));
-			vertices.add(vtxPos, vertex);
+			vertices.add(vtxPos, new Vertex(vertices.get(vtxPos)));
 		}
 	}
 }

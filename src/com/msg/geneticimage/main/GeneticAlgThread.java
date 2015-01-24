@@ -8,6 +8,7 @@ public class GeneticAlgThread implements Runnable {
 	PolygonImage[] threadPopulation;
 	GeneticAlgorithm genAlg;
 	
+	
 	public GeneticAlgThread(GeneticAlgorithm genAlg) {
 		this.genAlg = genAlg;
 		this.threadPopulation = genAlg.getPopulation();
